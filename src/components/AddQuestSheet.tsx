@@ -1,0 +1,146 @@
+import React from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { BlurView } from 'expo-blur';
+import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
+import { useQuestStore } from '../state/store';
+import { DURATION_CHOICES, PRESETS } from '../state/data';
+
+export default function AddQuestSheet() {
+  const closeSheet = useQuestStore((s) => s.closeSheet);
+  const draftName = useQuestStore((s) => s.draftName);
+  const draftMins = useQuestStore((s) => s.draftMins);
+  const setDraftName = useQuestStore((s) => s.setDraftName);
+  const setDraftMins = useQuestStore((s) => s.setDraftMins);
+  const addPreset = useQuestStore((s) => s.addPreset);
+  const addCustom = useQuestStore((s) => s.addCustom);
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={closeSheet} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.sheetOuter}
+        pointerEvents="box-none"
+      >
+        <View style={styles.sheetClip}>
+          <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassSheet }]} />
+          <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.handle} />
+            <Text style={styles.title}>Add a quest</Text>
+            <Text style={styles.subtitle}>PICK ONE OR WRITE YOUR OWN</Text>
+
+            <View style={styles.presetWrap}>
+              {PRESETS.map((p) => (
+                <Pressable key={p.name} style={styles.presetPill} onPress={() => addPreset(p.name, p.mins, p.glyph)}>
+                  <Text style={styles.presetName}>{p.name}</Text>
+                  <Text style={styles.presetMeta}>
+                    {p.mins}m · +{xpFor(p.mins)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.divider} />
+            <Text style={styles.ownLabel}>YOUR OWN</Text>
+            <TextInput
+              value={draftName}
+              onChangeText={setDraftName}
+              placeholder="e.g. 20 minutes of guitar"
+              placeholderTextColor={inkAlpha(0.4)}
+              style={styles.input}
+            />
+            <View style={styles.durationRow}>
+              {DURATION_CHOICES.map((m) => {
+                const on = draftMins === m;
+                return (
+                  <Pressable
+                    key={m}
+                    style={[
+                      styles.durationBtn,
+                      { backgroundColor: on ? colors.ochre : 'rgba(255,252,242,.8)', borderColor: on ? 'rgba(34,32,27,0.3)' : inkAlpha(0.16) },
+                    ]}
+                    onPress={() => setDraftMins(m)}
+                  >
+                    <Text style={styles.durationText}>{m}m</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.xpHint}>
+              {draftMins} MIN PAYS +{xpFor(draftMins)} XP
+            </Text>
+            <Pressable style={styles.addBtn} onPress={addCustom}>
+              <Text style={styles.addBtnText}>Add to today</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: { backgroundColor: colors.overlay },
+  sheetOuter: { flex: 1, justifyContent: 'flex-end' },
+  sheetClip: {
+    margin: 8,
+    borderRadius: radii.xxl,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.2),
+    overflow: 'hidden',
+    maxHeight: '76%',
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  sheetContent: { paddingTop: 14, paddingHorizontal: 16, paddingBottom: 18 },
+  handle: { width: 36, height: 4, borderRadius: 999, backgroundColor: inkAlpha(0.2), alignSelf: 'center', marginBottom: 13 },
+  title: { fontFamily: fonts.bodyExtra, fontSize: 17, color: colors.ink },
+  subtitle: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.4, color: inkAlpha(0.52), marginTop: 6 },
+  presetWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 13 },
+  presetPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,252,242,.8)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.16),
+  },
+  presetName: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
+  presetMeta: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.5) },
+  divider: { height: 1, backgroundColor: inkAlpha(0.12), marginTop: 16, marginBottom: 13 },
+  ownLabel: { fontFamily: fonts.mono, fontSize: 9.5, letterSpacing: 1.6, color: inkAlpha(0.45), marginBottom: 8 },
+  input: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.18),
+    backgroundColor: 'rgba(255,252,242,.85)',
+    fontFamily: fonts.bodySemi,
+    fontSize: 13.5,
+    color: colors.ink,
+  },
+  durationRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
+  durationBtn: { flex: 1, paddingVertical: 10, borderRadius: 11, alignItems: 'center', borderWidth: 1 },
+  durationText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
+  xpHint: { fontFamily: fonts.mono, fontSize: 10, lineHeight: 14, color: inkAlpha(0.5), marginTop: 10 },
+  addBtn: { marginTop: 13, paddingVertical: 13, borderRadius: 999, backgroundColor: colors.ink, alignItems: 'center' },
+  addBtnText: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.paperLight },
+});
