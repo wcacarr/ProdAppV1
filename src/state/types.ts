@@ -6,26 +6,17 @@ export type Quest = {
   mins: number;
   glyph: string;
   done: boolean;
-};
-
-export type LockedApp = {
-  id: string;
-  name: string;
-  initial: string;
-  /** Minutes of unlocked time remaining. >=600 is treated as "rest of the day". */
-  until: number;
-};
-
-export type FreeApp = {
-  name: string;
-  initial: string;
+  /** Finishing requires a photo of the completed task. */
+  needsPhoto: boolean;
+  photoUri?: string;
 };
 
 export type Offer = {
-  appId: string;
-  title: string;
-  cost: number;
+  packageName: string;
+  label: string;
+  tierLabel: string;
   mins: number;
+  cost: number;
 };
 
 export type Reward =
@@ -37,4 +28,5 @@ export type Preset = {
   name: string;
   mins: number;
   glyph: string;
+  needsPhoto: boolean;
 };

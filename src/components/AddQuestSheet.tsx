@@ -24,6 +24,8 @@ export default function AddQuestSheet() {
   const setDraftMins = useQuestStore((s) => s.setDraftMins);
   const addPreset = useQuestStore((s) => s.addPreset);
   const addCustom = useQuestStore((s) => s.addCustom);
+  const draftNeedsPhoto = useQuestStore((s) => s.draftNeedsPhoto);
+  const setDraftNeedsPhoto = useQuestStore((s) => s.setDraftNeedsPhoto);
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -43,7 +45,11 @@ export default function AddQuestSheet() {
 
             <View style={styles.presetWrap}>
               {PRESETS.map((p) => (
-                <Pressable key={p.name} style={styles.presetPill} onPress={() => addPreset(p.name, p.mins, p.glyph)}>
+                <Pressable
+                  key={p.name}
+                  style={styles.presetPill}
+                  onPress={() => addPreset(p.name, p.mins, p.glyph, p.needsPhoto)}
+                >
                   <Text style={styles.presetName}>{p.name}</Text>
                   <Text style={styles.presetMeta}>
                     {p.mins}m · +{xpFor(p.mins)}
@@ -78,6 +84,16 @@ export default function AddQuestSheet() {
                 );
               })}
             </View>
+            <Pressable style={styles.photoToggle} onPress={() => setDraftNeedsPhoto(!draftNeedsPhoto)}>
+              <View style={[styles.photoCheckbox, draftNeedsPhoto && styles.photoCheckboxOn]}>
+                {draftNeedsPhoto && <Text style={styles.photoCheckmark}>{'✓'}</Text>}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoLabel}>Photo to finish</Text>
+                <Text style={styles.photoHint}>You'll have to show the finished job to claim the XP.</Text>
+              </View>
+            </Pressable>
+
             <Text style={styles.xpHint}>
               {draftMins} MIN PAYS +{xpFor(draftMins)} XP
             </Text>
@@ -142,6 +158,30 @@ const styles = StyleSheet.create({
   durationRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
   durationBtn: { flex: 1, paddingVertical: 10, borderRadius: 11, alignItems: 'center', borderWidth: 1 },
   durationText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
+  photoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    padding: 11,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(246,239,216,.6)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.12),
+  },
+  photoCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.25),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoCheckboxOn: { backgroundColor: colors.ochre, borderColor: inkAlpha(0.3) },
+  photoCheckmark: { fontFamily: fonts.bodyExtra, fontSize: 12, color: colors.ink },
+  photoLabel: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.ink },
+  photoHint: { fontFamily: fonts.body, fontSize: 11, lineHeight: 15, color: inkAlpha(0.6), marginTop: 2 },
   xpHint: { fontFamily: fonts.mono, fontSize: 10, lineHeight: 14, color: inkAlpha(0.5), marginTop: 10 },
   addBtn: { marginTop: 13, paddingVertical: 13, borderRadius: 999, backgroundColor: colors.ink, alignItems: 'center' },
   addBtnText: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.paperLight },

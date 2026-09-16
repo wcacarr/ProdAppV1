@@ -1,16 +1,34 @@
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import { colors, fonts, inkAlpha, radii } from '../theme';
 import { useQuestStore } from '../state/store';
-import { TILE_BG, offerList } from '../state/data';
+import { UNLOCK_TIERS } from '../state/data';
+import { useAppRegistry } from '../state/useAppRegistry';
 import { Offer } from '../state/types';
 
 export default function StoreScreen() {
   const balance = useQuestStore((s) => s.balance);
-  const apps = useQuestStore((s) => s.apps);
   const buy = useQuestStore((s) => s.buy);
-  const offers = useMemo(() => offerList(apps), [apps]);
+  const setScreen = useQuestStore((s) => s.setScreen);
+  const { lockedApps } = useAppRegistry();
+
+  const rows = useMemo(
+    () =>
+      lockedApps.flatMap((app) =>
+        UNLOCK_TIERS.map((tier) => ({
+          icon: app.icon,
+          offer: {
+            packageName: app.packageName,
+            label: app.label,
+            tierLabel: tier.label,
+            mins: tier.mins,
+            cost: tier.cost,
+          } as Offer,
+        }))
+      ),
+    [lockedApps]
+  );
 
   return (
     <GlassPane
@@ -27,17 +45,31 @@ export default function StoreScreen() {
         </View>
         <Text style={styles.balance}>{balance} XP</Text>
       </View>
+
       <ScrollView contentContainerStyle={styles.content}>
-        {offers.map((o, i) => (
-          <OfferRow
-            key={`${o.appId}-${i}`}
-            offer={o}
-            initial={apps.find((a) => a.id === o.appId)?.initial ?? '?'}
-            balance={balance}
-            onBuy={() => buy(o)}
-          />
-        ))}
-        <Text style={styles.footnote}>Unlocks start the moment you buy them. Nothing carries to tomorrow.</Text>
+        {rows.length === 0 ? (
+          <Pressable style={styles.emptyWrap} onPress={() => setScreen('lock')}>
+            <Text style={styles.emptyTitle}>Nothing to buy yet</Text>
+            <Text style={styles.emptyBody}>
+              Lock an app first and its screen time shows up here. Tap to pick some.
+            </Text>
+          </Pressable>
+        ) : (
+          rows.map(({ offer, icon }) => (
+            <OfferRow
+              key={`${offer.packageName}-${offer.mins}`}
+              offer={offer}
+              icon={icon}
+              balance={balance}
+              onBuy={() => buy(offer)}
+            />
+          ))
+        )}
+        {rows.length > 0 && (
+          <Text style={styles.footnote}>
+            Unlocks start the moment you buy them. Nothing carries to tomorrow.
+          </Text>
+        )}
       </ScrollView>
     </GlassPane>
   );
@@ -45,23 +77,23 @@ export default function StoreScreen() {
 
 function OfferRow({
   offer,
-  initial,
+  icon,
   balance,
   onBuy,
 }: {
   offer: Offer;
-  initial: string;
+  icon: string | null;
   balance: number;
   onBuy: () => void;
 }) {
   const ok = balance >= offer.cost;
   return (
     <View style={[styles.row, { opacity: ok ? 1 : 0.62 }]}>
-      <View style={[styles.tile, { backgroundColor: TILE_BG[offer.appId] ?? 'rgba(246,239,216,.8)' }]}>
-        <Text style={styles.tileInitial}>{initial}</Text>
-      </View>
+      {icon ? <Image source={{ uri: icon }} style={styles.tile} /> : <View style={styles.tile} />}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.offerTitle}>{offer.title}</Text>
+        <Text style={styles.offerTitle} numberOfLines={1}>
+          {offer.label} — {offer.tierLabel}
+        </Text>
         <Text style={styles.offerSub}>{offer.cost} XP</Text>
       </View>
       <Pressable
@@ -113,12 +145,10 @@ const styles = StyleSheet.create({
     width: 37,
     height: 37,
     borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
     borderColor: inkAlpha(0.18),
+    backgroundColor: 'rgba(246,239,216,.8)',
   },
-  tileInitial: { fontFamily: fonts.bodyExtra, fontSize: 15, color: colors.ink },
   offerTitle: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink },
   offerSub: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.52), marginTop: 3 },
   buyBtn: {
@@ -130,5 +160,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buyBtnText: { fontFamily: fonts.bodyBold, fontSize: 12 },
-  footnote: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: inkAlpha(0.5), textAlign: 'center', marginTop: 4 },
+  footnote: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    lineHeight: 16,
+    color: inkAlpha(0.5),
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  emptyWrap: { paddingVertical: 28, paddingHorizontal: 10, alignItems: 'center', gap: 8 },
+  emptyTitle: { fontFamily: fonts.bodyExtra, fontSize: 15, color: colors.ink },
+  emptyBody: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    lineHeight: 19,
+    color: inkAlpha(0.6),
+    textAlign: 'center',
+    maxWidth: 240,
+  },
 });

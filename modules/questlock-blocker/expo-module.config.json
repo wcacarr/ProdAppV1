@@ -4,7 +4,8 @@
   ],
   "android": {
     "modules": [
-      "expo.modules.questlockblocker.QuestlockBlockerModule"
+      "expo.modules.questlockblocker.QuestlockBlockerModule",
+      "expo.modules.questlockblocker.QuestlockMediaModule"
     ]
   }
 }

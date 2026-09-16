@@ -1,51 +1,53 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
+import UnlockChallenge from '../components/UnlockChallenge';
 import { colors, fonts, inkAlpha, radii } from '../theme';
+import { useQuestStore } from '../state/store';
+import { AppEntry, useAppRegistry } from '../state/useAppRegistry';
 import {
-  InstalledApp,
-  getBlockedPackages,
-  getInstalledApps,
-  getUnlockUntil,
-  grantUnlock,
   isAccessibilityServiceEnabled,
   isBlockingSupported,
+  isNotificationAccessGranted,
+  lockApp,
   openAccessibilitySettings,
-  setBlockedPackages,
+  openNotificationAccessSettings,
+  unlockApp,
 } from '../../modules/questlock-blocker';
 
 export default function LockSetupScreen() {
-  const [enabled, setEnabled] = useState(false);
-  const [apps, setApps] = useState<InstalledApp[]>([]);
-  const [blocked, setBlocked] = useState<string[]>([]);
-  const [tick, setTick] = useState(0);
+  const flash = useQuestStore((s) => s.flash);
+  const { entries, loading, refreshLocks } = useAppRegistry();
+  const [enforcementOn, setEnforcementOn] = useState(false);
+  const [mediaOn, setMediaOn] = useState(false);
+  const [challenge, setChallenge] = useState<AppEntry | null>(null);
 
-  const refresh = useCallback(() => {
-    setEnabled(isAccessibilityServiceEnabled());
-    setBlocked(getBlockedPackages());
+  const refreshPermissions = useCallback(() => {
+    setEnforcementOn(isAccessibilityServiceEnabled());
+    setMediaOn(isNotificationAccessGranted());
   }, []);
 
   useEffect(() => {
-    setApps(getInstalledApps());
-    refresh();
-    // Permission is granted in system Settings, so re-check on return.
+    refreshPermissions();
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') refresh();
+      if (s === 'active') refreshPermissions();
     });
     return () => sub.remove();
-  }, [refresh]);
+  }, [refreshPermissions]);
 
-  useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const toggle = (packageName: string) => {
-    const next = blocked.includes(packageName)
-      ? blocked.filter((p) => p !== packageName)
-      : [...blocked, packageName];
-    setBlockedPackages(next);
-    setBlocked(next);
+  const toggle = (entry: AppEntry) => {
+    if (!entry.locked) {
+      lockApp(entry.packageName);
+      refreshLocks();
+      flash(`${entry.label} locks in 1 minute.`);
+      return;
+    }
+    if (entry.inGrace) {
+      unlockApp(entry.packageName);
+      refreshLocks();
+      return;
+    }
+    setChallenge(entry);
   };
 
   if (!isBlockingSupported) {
@@ -62,72 +64,118 @@ export default function LockSetupScreen() {
   }
 
   return (
-    <GlassPane
-      radius={radii.xl}
-      intensity={35}
-      style={{ flex: 1, minHeight: 0 }}
-      contentStyle={{ flex: 1, minHeight: 0 }}
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>App locking</Text>
-        <Text style={styles.subtitle}>SPIKE · VERIFY BLOCKING WORKS</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.permRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.permTitle}>{enabled ? 'Enforcement is on' : 'Enforcement is off'}</Text>
-            <Text style={styles.permBody}>
-              {enabled
-                ? 'Opening a locked app should bounce you home.'
-                : 'Questlock needs accessibility access to notice which app opened.'}
-            </Text>
-          </View>
-          {!enabled && (
-            <Pressable style={styles.permBtn} onPress={openAccessibilitySettings}>
-              <Text style={styles.permBtnText}>Turn on</Text>
-            </Pressable>
-          )}
+    <>
+      <GlassPane
+        radius={radii.xl}
+        intensity={35}
+        style={{ flex: 1, minHeight: 0 }}
+        contentStyle={{ flex: 1, minHeight: 0 }}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Locked apps</Text>
+          <Text style={styles.subtitle}>ONE MINUTE TO CHANGE YOUR MIND</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>PICK APPS TO LOCK</Text>
-        {apps.map((app) => {
-          const on = blocked.includes(app.packageName);
-          const until = on ? getUnlockUntil(app.packageName) : 0;
-          const secsLeft = Math.max(0, Math.round((until - Date.now()) / 1000));
-          return (
-            <View key={app.packageName} style={styles.appRow}>
-              <Pressable style={{ flex: 1 }} onPress={() => toggle(app.packageName)}>
-                <Text style={styles.appLabel} numberOfLines={1}>
-                  {app.label}
-                </Text>
-                <Text style={styles.appPkg} numberOfLines={1}>
-                  {secsLeft > 0 ? `UNLOCKED · ${secsLeft}s LEFT` : app.packageName}
-                </Text>
-              </Pressable>
-              {on && (
-                <Pressable
-                  style={styles.unlockBtn}
-                  onPress={() => {
-                    grantUnlock(app.packageName, 1);
-                    setTick((n) => n + 1);
-                  }}
-                >
-                  <Text style={styles.unlockBtnText}>+1 min</Text>
-                </Pressable>
-              )}
-              <Pressable
-                style={[styles.checkbox, on && styles.checkboxOn]}
-                onPress={() => toggle(app.packageName)}
-              >
-                {on && <Text style={styles.checkmark}>{'✓'}</Text>}
-              </Pressable>
-            </View>
-          );
-        })}
-        {apps.length === 0 && <Text style={styles.body}>No launchable apps found.</Text>}
-      </ScrollView>
-    </GlassPane>
+        <ScrollView contentContainerStyle={styles.content}>
+          <PermissionRow
+            on={enforcementOn}
+            title={enforcementOn ? 'Enforcement is on' : 'Enforcement is off'}
+            body={
+              enforcementOn
+                ? 'Opening a locked app sends you home.'
+                : 'Questlock needs accessibility access to notice which app opened.'
+            }
+            onPress={openAccessibilitySettings}
+          />
+          <PermissionRow
+            on={mediaOn}
+            title={mediaOn ? 'Media controls are on' : 'Media controls are off'}
+            body={
+              mediaOn
+                ? 'The dock can control whatever is playing.'
+                : 'Notification access lets the dock see Audible, Spotify and the rest.'
+            }
+            onPress={openNotificationAccessSettings}
+          />
+
+          <Text style={styles.sectionLabel}>PICK APPS TO LOCK</Text>
+          {loading && <Text style={styles.body}>Loading your apps…</Text>}
+          {entries.map((entry) => (
+            <AppRow key={entry.packageName} entry={entry} onToggle={() => toggle(entry)} />
+          ))}
+        </ScrollView>
+      </GlassPane>
+
+      {challenge && (
+        <UnlockChallenge
+          appLabel={challenge.label}
+          onPass={() => {
+            unlockApp(challenge.packageName);
+            refreshLocks();
+            setChallenge(null);
+            flash(`${challenge.label} unlocked.`);
+          }}
+          onCancel={() => setChallenge(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function PermissionRow({
+  on,
+  title,
+  body,
+  onPress,
+}: {
+  on: boolean;
+  title: string;
+  body: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.permRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.permTitle}>{title}</Text>
+        <Text style={styles.permBody}>{body}</Text>
+      </View>
+      {!on && (
+        <Pressable style={styles.permBtn} onPress={onPress}>
+          <Text style={styles.permBtnText}>Turn on</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function AppRow({ entry, onToggle }: { entry: AppEntry; onToggle: () => void }) {
+  const graceLeft = entry.inGrace ? Math.max(0, Math.ceil((entry.lockActiveAt - Date.now()) / 1000)) : 0;
+
+  const status = !entry.locked
+    ? entry.packageName
+    : entry.inGrace
+      ? `LOCKS IN ${graceLeft}s · TAP TO UNDO`
+      : 'LOCKED · TYPING TEST TO REMOVE';
+
+  return (
+    <Pressable style={styles.appRow} onPress={onToggle}>
+      {entry.icon ? (
+        <Image source={{ uri: entry.icon }} style={styles.appIcon} />
+      ) : (
+        <View style={styles.appIcon} />
+      )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.appLabel} numberOfLines={1}>
+          {entry.label}
+        </Text>
+        <Text style={[styles.appPkg, entry.locked && { color: colors.ochreDeep }]} numberOfLines={1}>
+          {status}
+        </Text>
+      </View>
+      <View style={[styles.checkbox, entry.locked && styles.checkboxOn]}>
+        {entry.locked && <Text style={styles.checkmark}>{'✓'}</Text>}
+      </View>
+    </Pressable>
   );
 }
 
@@ -170,7 +218,7 @@ const styles = StyleSheet.create({
   appRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 11,
     padding: 11,
     paddingHorizontal: 12,
     borderRadius: radii.md,
@@ -178,16 +226,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
   },
+  appIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(246,239,216,.8)' },
   appLabel: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink },
   appPkg: { fontFamily: fonts.mono, fontSize: 9.5, color: inkAlpha(0.52), marginTop: 3 },
-  unlockBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: inkAlpha(0.2),
-  },
-  unlockBtnText: { fontFamily: fonts.bodyBold, fontSize: 11, color: inkAlpha(0.7) },
   checkbox: {
     width: 26,
     height: 26,

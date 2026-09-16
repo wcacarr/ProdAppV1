@@ -3,10 +3,18 @@ package expo.modules.questlockblocker
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.provider.Settings
+import android.util.Base64
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.io.ByteArrayOutputStream
+
+private const val ICON_PX = 96
 
 class QuestlockBlockerModule : Module() {
   private val context: Context
@@ -22,8 +30,6 @@ class QuestlockBlockerModule : Module() {
         Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
       ) ?: return@Function false
 
-      // The setting stores components in either flattened form, so compare
-      // parsed ComponentNames rather than raw strings.
       enabled.split(':').any { ComponentName.unflattenFromString(it) == expected }
     }
 
@@ -34,40 +40,74 @@ class QuestlockBlockerModule : Module() {
       context.startActivity(intent)
     }
 
-    Function("getInstalledApps") {
+    // Icons come back as data URIs so the launcher grid can render them
+    // directly in <Image source={{ uri }} />.
+    AsyncFunction("getInstalledApps") {
       val pm = context.packageManager
       val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
       @Suppress("DEPRECATION")
       pm.queryIntentActivities(intent, 0)
+        .distinctBy { it.activityInfo.packageName }
+        .filter { it.activityInfo.packageName != context.packageName }
         .map {
           mapOf(
             "packageName" to it.activityInfo.packageName,
-            "label" to it.loadLabel(pm).toString()
+            "label" to it.loadLabel(pm).toString(),
+            "icon" to encodeIcon(it.loadIcon(pm))
           )
         }
-        .filter { it["packageName"] != context.packageName }
-        .distinctBy { it["packageName"] }
-        .sortedBy { it["label"]?.lowercase() }
+        .sortedBy { (it["label"] as? String)?.lowercase() }
     }
 
-    Function("getBlockedPackages") {
-      BlockStore.getBlocked(context).toList()
+    Function("launchApp") { packageName: String ->
+      val launch = context.packageManager.getLaunchIntentForPackage(packageName)
+        ?: return@Function false
+      launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(launch)
+      true
     }
 
-    Function("setBlockedPackages") { packages: List<String> ->
-      BlockStore.setBlocked(context, packages)
+    Function("getLockStates") {
+      BlockStore.getBlocked(context).map {
+        mapOf(
+          "packageName" to it,
+          "lockActiveAt" to BlockStore.getLockActiveAt(context, it).toDouble(),
+          "unlockUntil" to BlockStore.getUnlockUntil(context, it).toDouble()
+        )
+      }
+    }
+
+    Function("lockApp") { packageName: String ->
+      BlockStore.lock(context, packageName)
+    }
+
+    Function("unlockApp") { packageName: String ->
+      BlockStore.unlock(context, packageName)
     }
 
     Function("grantUnlock") { packageName: String, minutes: Int ->
       BlockStore.grantUnlock(context, packageName, minutes)
     }
 
-    Function("clearUnlock") { packageName: String ->
-      BlockStore.clearUnlock(context, packageName)
+    Function("isBlockedNow") { packageName: String ->
+      BlockStore.isBlockedNow(context, packageName)
     }
+  }
 
-    Function("getUnlockUntil") { packageName: String ->
-      BlockStore.getUnlockUntil(context, packageName).toDouble()
+  private fun encodeIcon(drawable: Drawable): String? = try {
+    val bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+      Bitmap.createScaledBitmap(drawable.bitmap, ICON_PX, ICON_PX, true)
+    } else {
+      Bitmap.createBitmap(ICON_PX, ICON_PX, Bitmap.Config.ARGB_8888).also {
+        val canvas = Canvas(it)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+      }
     }
+    val out = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+    "data:image/png;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+  } catch (_: Throwable) {
+    null
   }
 }

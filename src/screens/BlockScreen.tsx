@@ -1,45 +1,30 @@
-import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import { colors, fonts, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
-import { offerList } from '../state/data';
 import { fastestRemaining } from '../state/selectors';
+import { UNLOCK_TIERS } from '../state/data';
+import { useAppRegistry } from '../state/useAppRegistry';
 
 const paperAlpha = (a: number) => `rgba(253,248,232,${a})`;
 
 export default function BlockScreen() {
-  const apps = useQuestStore((s) => s.apps);
-  const blockId = useQuestStore((s) => s.blockId);
+  const blockPackage = useQuestStore((s) => s.blockPackage);
   const quests = useQuestStore((s) => s.quests);
   const balance = useQuestStore((s) => s.balance);
-  const strictMode = useQuestStore((s) => s.strictMode);
   const buy = useQuestStore((s) => s.buy);
-  const offers = useMemo(() => offerList(apps), [apps]);
   const closeBlock = useQuestStore((s) => s.closeBlock);
   const startQuest = useQuestStore((s) => s.startQuest);
-  const flash = useQuestStore((s) => s.flash);
+  const { entries } = useAppRegistry();
 
-  const blocked = apps.find((a) => a.id === blockId);
-  const blockOffer = blocked ? offers.find((o) => o.appId === blocked.id) : undefined;
-  const canAfford = blockOffer ? balance >= blockOffer.cost : false;
+  const blocked = entries.find((e) => e.packageName === blockPackage);
+  const label = blocked?.label ?? 'This app';
+  const cheapest = UNLOCK_TIERS[0];
+  const canAfford = balance >= cheapest.cost;
   const fastest = fastestRemaining(quests);
 
-  const buyLabel = strictMode
-    ? 'Strict mode is on'
-    : canAfford && blockOffer
-      ? `Unlock for ${blockOffer.cost} XP`
-      : `Need ${blockOffer ? blockOffer.cost - balance : 0} more XP`;
-
-  const handleBuy = () => {
-    if (strictMode) {
-      flash('Strict mode: quests only.');
-      return;
-    }
-    if (blockOffer) buy(blockOffer);
-  };
-
-  if (!blocked) return null;
+  if (!blockPackage) return null;
 
   return (
     <GlassPane
@@ -53,21 +38,21 @@ export default function BlockScreen() {
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.body}>
-          <View style={styles.iconBox}>
-            <Text style={styles.iconText}>{blocked.initial}</Text>
-          </View>
+          {blocked?.icon ? (
+            <Image source={{ uri: blocked.icon }} style={styles.iconBox} />
+          ) : (
+            <View style={styles.iconBox} />
+          )}
           <View>
-            <Text style={styles.title}>{blocked.name} is locked</Text>
+            <Text style={styles.title}>{label} is locked</Text>
             <Text style={styles.desc}>
-              {strictMode
-                ? 'No buying your way in on strict mode. Finish a quest and it opens on its own.'
-                : `You have ${balance} XP. An hour of ${blocked.name} costs ${blockOffer ? blockOffer.cost : 100}.`}
+              You have {balance} XP. {cheapest.label} of {label} costs {cheapest.cost}.
             </Text>
           </View>
           <View style={styles.divider} />
           <View style={{ gap: 9 }}>
             <Text style={styles.sectionLabel}>FASTEST WAY IN</Text>
-            {fastest && (
+            {fastest ? (
               <Pressable style={styles.questRow} onPress={() => startQuest(fastest.id)}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.questName}>{fastest.name}</Text>
@@ -79,6 +64,8 @@ export default function BlockScreen() {
                   <Text style={styles.startPillText}>Start</Text>
                 </View>
               </Pressable>
+            ) : (
+              <Text style={styles.questMeta}>Nothing left on today's list.</Text>
             )}
           </View>
         </View>
@@ -88,14 +75,24 @@ export default function BlockScreen() {
             style={[
               styles.buyBtn,
               {
-                backgroundColor: !strictMode && canAfford ? colors.ochre : 'transparent',
-                borderColor: !strictMode && canAfford ? 'rgba(34,32,27,0.3)' : paperAlpha(0.28),
+                backgroundColor: canAfford ? colors.ochre : 'transparent',
+                borderColor: canAfford ? 'rgba(34,32,27,0.3)' : paperAlpha(0.28),
               },
             ]}
-            onPress={handleBuy}
+            onPress={() =>
+              buy({
+                packageName: blockPackage,
+                label,
+                tierLabel: cheapest.label,
+                mins: cheapest.mins,
+                cost: cheapest.cost,
+              })
+            }
           >
-            <Text style={[styles.buyBtnText, { color: !strictMode && canAfford ? colors.ink : paperAlpha(0.6) }]}>
-              {buyLabel}
+            <Text style={[styles.buyBtnText, { color: canAfford ? colors.ink : paperAlpha(0.6) }]}>
+              {canAfford
+                ? `Unlock ${cheapest.label} for ${cheapest.cost} XP`
+                : `Need ${cheapest.cost - balance} more XP`}
             </Text>
           </Pressable>
           <Pressable style={styles.notNow} onPress={closeBlock}>
@@ -114,13 +111,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: paperAlpha(0.1),
     borderWidth: 1,
     borderColor: paperAlpha(0.22),
   },
-  iconText: { fontFamily: fonts.bodyExtra, fontSize: 21, color: colors.paperLight },
   title: { fontFamily: fonts.bodyExtra, fontSize: 24, color: colors.paperLight },
   desc: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: paperAlpha(0.68), marginTop: 9, maxWidth: 280 },
   divider: { height: 1, backgroundColor: paperAlpha(0.14) },

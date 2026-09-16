@@ -3,7 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
-import { fastestRemaining, levelInfo, questMeta } from '../state/selectors';
+import { fastestRemaining, questMeta } from '../state/selectors';
+import { rankFor } from '../state/ranks';
+import { useAppRegistry } from '../state/useAppRegistry';
 import { Quest } from '../state/types';
 
 export default function TodayScreen() {
@@ -15,7 +17,9 @@ export default function TodayScreen() {
   const openSheet = useQuestStore((s) => s.openSheet);
   const flash = useQuestStore((s) => s.flash);
 
-  const { level, nextLevelXp, pct } = levelInfo(lifetime);
+  const rank = rankFor(lifetime);
+  const { lockedApps } = useAppRegistry();
+  const lockedLabel = lockedApps[0]?.label ?? null;
   const remaining = quests.filter((q) => !q.done);
   const fastest = fastestRemaining(quests);
   const doneCount = quests.filter((q) => q.done).length;
@@ -34,12 +38,15 @@ export default function TodayScreen() {
             <Text style={styles.balance}>{balance} XP</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.level}>Level {level}</Text>
-            <Text style={styles.nextLevel}>{nextLevelXp} XP TO LVL {level + 1}</Text>
+            <Text style={styles.rankTier}>RANK {rank.tier}</Text>
+            <Text style={styles.rankName}>{rank.name}</Text>
+            <Text style={styles.nextLevel}>
+              {rank.nextName ? `${rank.xpToNext} XP TO ${rank.nextName.toUpperCase()}` : 'TOP RANK'}
+            </Text>
           </View>
         </View>
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${pct}%` }]} />
+          <View style={[styles.progressFill, { width: `${rank.pct}%` }]} />
         </View>
       </GlassPane>
 
@@ -71,7 +78,9 @@ export default function TodayScreen() {
             </Text>
             <Text style={styles.nudgeBody}>
               {remaining.length
-                ? `"${fastest?.name}" pays +${xpFor(fastest?.mins ?? 0)} XP — over half an hour of Tubely. Start there if the big block feels heavy.`
+                ? `"${fastest?.name}" pays +${xpFor(fastest?.mins ?? 0)} XP${
+                    lockedLabel ? ` — a decent chunk of ${lockedLabel}` : ''
+                  }. Start there if the big block feels heavy.`
                 : "Everything on today's list is claimed. Spend what you earned, or add one more if you are on a roll."}
             </Text>
           </View>
@@ -122,8 +131,9 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   dayLabel: { fontFamily: fonts.mono, fontSize: 9.5, letterSpacing: 2, color: inkAlpha(0.55) },
   balance: { fontFamily: fonts.bodyExtra, fontSize: 33, color: colors.ink, marginTop: 7, letterSpacing: -0.6 },
-  level: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: inkAlpha(0.72) },
-  nextLevel: { fontFamily: fonts.mono, fontSize: 9.5, color: inkAlpha(0.5), marginTop: 6 },
+  rankTier: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 1.4, color: inkAlpha(0.45) },
+  rankName: { fontFamily: fonts.bodyExtra, fontSize: 14, color: colors.ochreDeep, marginTop: 3 },
+  nextLevel: { fontFamily: fonts.mono, fontSize: 9.5, color: inkAlpha(0.5), marginTop: 5 },
   progressTrack: { height: 5, borderRadius: 999, backgroundColor: inkAlpha(0.12), overflow: 'hidden', marginTop: 11 },
   progressFill: { height: '100%', borderRadius: 999, backgroundColor: colors.ochre },
 

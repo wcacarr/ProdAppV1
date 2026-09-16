@@ -5,6 +5,7 @@ import NatureBackground from '../components/NatureBackground';
 import TopTabBar from '../components/TopTabBar';
 import PlayerDock from '../components/PlayerDock';
 import AddQuestSheet from '../components/AddQuestSheet';
+import PhotoProofPrompt from '../components/PhotoProofPrompt';
 import Toast from '../components/Toast';
 import TodayScreen from './TodayScreen';
 import StoreScreen from './StoreScreen';
@@ -25,7 +26,6 @@ export default function RootScreen() {
       <NatureBackground />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.column}>
-          <TopTabBar />
           {screen === 'today' && <TodayScreen />}
           {screen === 'store' && <StoreScreen />}
           {screen === 'apps' && <AppsScreen />}
@@ -33,10 +33,12 @@ export default function RootScreen() {
           {screen === 'reward' && <RewardScreen />}
           {screen === 'block' && <BlockScreen />}
           {screen === 'lock' && <LockSetupScreen />}
+          <TopTabBar />
           <PlayerDock />
         </View>
       </SafeAreaView>
       {sheetOpen && <AddQuestSheet />}
+      <PhotoProofPrompt />
       <Toast />
     </View>
   );

@@ -4,11 +4,26 @@ import Svg, { Circle, Ellipse, G, Polygon, Polyline, Rect } from 'react-native-s
 import GlassPane from './GlassPane';
 import { colors, fonts, inkAlpha, mmss, radii } from '../theme';
 import { useNowPlaying } from '../media/useNowPlaying';
+import { openNotificationAccessSettings } from '../../modules/questlock-blocker';
 
 export default function PlayerDock() {
-  const { now, liveProgressMs, togglePlay, next, previous } = useNowPlaying();
+  const { now, status, liveProgressMs, togglePlay, next, previous } = useNowPlaying();
 
-  const sourceLabel = now ? 'DEVICE MEDIA' : 'NO MEDIA PLAYING';
+  const sourceLabel =
+    status === 'active'
+      ? 'DEVICE MEDIA'
+      : status === 'needs_permission'
+        ? 'TAP TO CONNECT MEDIA'
+        : status === 'unsupported'
+          ? 'MEDIA NEEDS A DEV BUILD'
+          : 'NOTHING PLAYING';
+
+  const idleTitle = status === 'needs_permission' ? 'Connect media controls' : 'Nothing playing';
+  const idleSubtitle =
+    status === 'needs_permission'
+      ? 'Allow notification access to see Audible'
+      : 'Play something in any music app';
+
   const trackPct = now && now.durationMs ? Math.min(1, liveProgressMs / now.durationMs) : 0;
 
   return (
@@ -21,7 +36,10 @@ export default function PlayerDock() {
             <MiniScene />
           )}
         </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
+        <Pressable
+          style={{ flex: 1, minWidth: 0 }}
+          onPress={() => status === 'needs_permission' && openNotificationAccessSettings()}
+        >
           <View style={styles.sourceRow}>
             <View style={styles.dot} />
             <Text style={styles.sourceText} numberOfLines={1}>
@@ -29,12 +47,12 @@ export default function PlayerDock() {
             </Text>
           </View>
           <Text style={styles.trackTitle} numberOfLines={1}>
-            {now?.trackName ?? 'Nothing playing'}
+            {now?.trackName || idleTitle}
           </Text>
           <Text style={styles.trackArtist} numberOfLines={1}>
-            {now?.artistName ?? 'Play something in any music app'}
+            {now?.artistName || idleSubtitle}
           </Text>
-        </View>
+        </Pressable>
         <View style={[styles.controls, !now && styles.controlsIdle]}>
           <Pressable style={styles.smallBtn} onPress={previous}>
             <Svg width={13} height={13} viewBox="0 0 16 16">
