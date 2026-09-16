@@ -16,8 +16,12 @@ type GlassPaneProps = {
 
 // Reusable "Hyprland glass" pane: BlurView (real backdrop blur) + a
 // translucent paper (or ink, for the dark Block pane) wash + hairline
-// border + soft drop shadow. Mirrors the backdrop-filter blur panes in
-// project/Questlock v2.dc.html.
+// border + soft drop shadow.
+//
+// Three layers on purpose: the shadow can't live on a clipping view (iOS
+// clips it away), and content has to be inside the clip or card corners
+// bleed past the pane's radius. flexBasis:'auto' with grow+shrink lets the
+// clip fill a flexed parent without collapsing inside an auto-height one.
 export default function GlassPane({
   children,
   style,
@@ -34,26 +38,34 @@ export default function GlassPane({
         {
           borderRadius: radius,
           shadowColor: colors.ink,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.16,
-          shadowRadius: 16,
-          elevation: 8,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.14,
+          shadowRadius: 14,
+          elevation: 6,
         },
         style,
       ]}
     >
-      <View style={[StyleSheet.absoluteFill, styles.glass, { borderRadius: radius, borderColor }]}>
+      <View style={[styles.clip, { borderRadius: radius, borderColor }]}>
         <BlurView intensity={intensity} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} />
+        <View style={[styles.content, contentStyle]}>{children}</View>
       </View>
-      <View style={contentStyle}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  glass: {
+  clip: {
     overflow: 'hidden',
     borderWidth: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+  },
+  content: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
   },
 });

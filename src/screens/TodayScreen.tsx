@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
+import PressableScale from '../components/PressableScale';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
 import { fastestRemaining, questMeta } from '../state/selectors';
@@ -68,9 +69,9 @@ export default function TodayScreen() {
             <QuestRow key={q.id} quest={q} onStart={() => startQuest(q.id)} onClaimed={() => flash('Already claimed today.')} />
           ))}
 
-          <Pressable style={styles.addQuest} onPress={openSheet}>
+          <PressableScale style={styles.addQuest} onPress={openSheet}>
             <Text style={styles.addQuestText}>+ Add a quest</Text>
-          </Pressable>
+          </PressableScale>
 
           <View style={styles.nudge}>
             <Text style={styles.nudgeTitle}>
@@ -108,7 +109,7 @@ function QuestRow({ quest, onStart, onClaimed }: { quest: Quest; onStart: () => 
         </Text>
         <Text style={styles.questMeta}>{questMeta(quest)}</Text>
       </View>
-      <Pressable
+      <PressableScale
         onPress={done ? onClaimed : onStart}
         style={[
           styles.questBtn,
@@ -121,50 +122,50 @@ function QuestRow({ quest, onStart, onClaimed }: { quest: Quest; onStart: () => 
         <Text style={[styles.questBtnText, { color: done ? inkAlpha(0.42) : colors.ink }]}>
           {done ? 'Claimed' : 'Start'}
         </Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  summaryPad: { paddingTop: 13, paddingHorizontal: 15, paddingBottom: 12 },
+  summaryPad: { paddingTop: 11, paddingHorizontal: 13, paddingBottom: 10 },
   summaryRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   dayLabel: { fontFamily: fonts.mono, fontSize: 9.5, letterSpacing: 2, color: inkAlpha(0.55) },
-  balance: { fontFamily: fonts.bodyExtra, fontSize: 33, color: colors.ink, marginTop: 7, letterSpacing: -0.6 },
+  balance: { fontFamily: fonts.bodyExtra, fontSize: 27, color: colors.ink, marginTop: 5, letterSpacing: -0.5 },
   rankTier: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 1.4, color: inkAlpha(0.45) },
-  rankName: { fontFamily: fonts.bodyExtra, fontSize: 14, color: colors.ochreDeep, marginTop: 3 },
+  rankName: { fontFamily: fonts.bodyExtra, fontSize: 13, color: colors.ochreDeep, marginTop: 3 },
   nextLevel: { fontFamily: fonts.mono, fontSize: 9.5, color: inkAlpha(0.5), marginTop: 5 },
-  progressTrack: { height: 5, borderRadius: 999, backgroundColor: inkAlpha(0.12), overflow: 'hidden', marginTop: 11 },
+  progressTrack: { height: 4, borderRadius: 999, backgroundColor: inkAlpha(0.12), overflow: 'hidden', marginTop: 9 },
   progressFill: { height: '100%', borderRadius: 999, backgroundColor: colors.ochre },
 
   listHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 13,
+    paddingTop: 10,
+    paddingBottom: 9,
     borderBottomWidth: 1,
     borderBottomColor: inkAlpha(0.12),
   },
-  listTitle: { fontFamily: fonts.bodyExtra, fontSize: 15, color: colors.ink },
+  listTitle: { fontFamily: fonts.bodyExtra, fontSize: 14, color: colors.ink },
   listCount: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.52) },
-  listContent: { padding: 13, paddingTop: 11, gap: 8 },
+  listContent: { padding: 11, paddingTop: 10, gap: 7 },
 
   questRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    padding: 11,
-    paddingHorizontal: 12,
+    gap: 10,
+    padding: 9,
+    paddingHorizontal: 11,
     borderRadius: radii.md,
     backgroundColor: colors.glassCard,
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
   },
   chip: {
-    width: 31,
-    height: 31,
+    width: 28,
+    height: 28,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -172,30 +173,30 @@ const styles = StyleSheet.create({
     borderColor: inkAlpha(0.18),
   },
   chipGlyph: { fontFamily: fonts.mono, fontSize: 12, color: colors.ink },
-  questName: { fontFamily: fonts.bodyBold, fontSize: 13.5 },
+  questName: { fontFamily: fonts.bodyBold, fontSize: 13 },
   questMeta: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.52), marginTop: 3 },
-  questBtn: { paddingVertical: 8, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1 },
-  questBtnText: { fontFamily: fonts.bodyBold, fontSize: 12 },
+  questBtn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1 },
+  questBtnText: { fontFamily: fonts.bodyBold, fontSize: 11.5 },
 
   addQuest: {
-    padding: 11,
+    padding: 10,
     borderRadius: radii.md,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: inkAlpha(0.28),
     alignItems: 'center',
   },
-  addQuestText: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: inkAlpha(0.6) },
+  addQuestText: { fontFamily: fonts.bodyBold, fontSize: 12, color: inkAlpha(0.6) },
 
   nudge: {
-    marginTop: 6,
-    padding: 12,
-    paddingHorizontal: 13,
+    marginTop: 4,
+    padding: 10,
+    paddingHorizontal: 12,
     borderRadius: radii.md,
     backgroundColor: colors.glassNudge,
     borderWidth: 1,
     borderColor: inkAlpha(0.12),
   },
-  nudgeTitle: { fontFamily: fonts.bodyExtra, fontSize: 12.5, color: colors.ink, marginBottom: 6 },
-  nudgeBody: { fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: inkAlpha(0.68) },
+  nudgeTitle: { fontFamily: fonts.bodyExtra, fontSize: 12, color: colors.ink, marginBottom: 6 },
+  nudgeBody: { fontFamily: fonts.body, fontSize: 11.5, lineHeight: 17, color: inkAlpha(0.68) },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Polygon, Polyline, Rect } from 'react-native-svg';
 import GlassPane from './GlassPane';
+import PressableScale from './PressableScale';
 import { colors, fonts, inkAlpha, mmss, radii } from '../theme';
 import { useNowPlaying } from '../media/useNowPlaying';
 import { openNotificationAccessSettings } from '../../modules/questlock-blocker';
@@ -54,13 +55,13 @@ export default function PlayerDock() {
           </Text>
         </Pressable>
         <View style={[styles.controls, !now && styles.controlsIdle]}>
-          <Pressable style={styles.smallBtn} onPress={previous}>
+          <PressableScale style={styles.smallBtn} onPress={previous}>
             <Svg width={13} height={13} viewBox="0 0 16 16">
               <Polygon points="14,2 6,8 14,14" fill={colors.ink} />
               <Rect x={3} y={2} width={2} height={12} fill={colors.ink} />
             </Svg>
-          </Pressable>
-          <Pressable style={styles.playBtn} onPress={togglePlay}>
+          </PressableScale>
+          <PressableScale style={styles.playBtn} onPress={togglePlay}>
             {now?.isPlaying ? (
               <Svg width={14} height={14} viewBox="0 0 16 16">
                 <Rect x={3} y={2} width={4} height={12} fill={colors.ink} />
@@ -71,13 +72,13 @@ export default function PlayerDock() {
                 <Polygon points="3,2 14,8 3,14" fill={colors.ink} />
               </Svg>
             )}
-          </Pressable>
-          <Pressable style={styles.smallBtn} onPress={next}>
+          </PressableScale>
+          <PressableScale style={styles.smallBtn} onPress={next}>
             <Svg width={13} height={13} viewBox="0 0 16 16">
               <Polygon points="2,2 10,8 2,14" fill={colors.ink} />
               <Rect x={11} y={2} width={2} height={12} fill={colors.ink} />
             </Svg>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
 
@@ -110,11 +111,11 @@ function MiniScene() {
 }
 
 const styles = StyleSheet.create({
-  pad: { paddingTop: 10, paddingHorizontal: 12, paddingBottom: 11 },
+  pad: { paddingTop: 9, paddingHorizontal: 11, paddingBottom: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   art: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 13,
     overflow: 'hidden',
     borderWidth: 1,
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
   sourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.ochreDeep },
   sourceText: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 1, color: inkAlpha(0.55) },
-  trackTitle: { fontFamily: fonts.bodyBold, fontSize: 13, marginTop: 5, color: colors.ink },
+  trackTitle: { fontFamily: fonts.bodyBold, fontSize: 12.5, marginTop: 4, color: colors.ink },
   trackArtist: { fontFamily: fonts.mono, fontSize: 10, marginTop: 3, color: inkAlpha(0.55) },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   controlsIdle: { opacity: 0.45 },
@@ -139,9 +140,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(246,239,216,.6)',
   },
   playBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
   },
   connectBtn: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.ochre },
   connectBtnText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 9 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   time: { fontFamily: fonts.mono, fontSize: 9, color: inkAlpha(0.5), fontVariant: ['tabular-nums'] },
   track: { flex: 1, height: 3, borderRadius: 999, backgroundColor: inkAlpha(0.14), overflow: 'hidden' },
   trackFill: { height: '100%', borderRadius: 999, backgroundColor: colors.ochreDeep },
