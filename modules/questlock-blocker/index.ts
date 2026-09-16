@@ -3,7 +3,8 @@ import { requireOptionalNativeModule } from 'expo';
 export type InstalledApp = {
   packageName: string;
   label: string;
-  icon: string | null;
+  /** data: URI, or empty string when the icon couldn't be read. */
+  icon: string;
 };
 
 export type LockState = {
