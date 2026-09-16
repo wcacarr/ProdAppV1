@@ -17,20 +17,25 @@ import RewardScreen from './RewardScreen';
 import BlockScreen from './BlockScreen';
 import LockSetupScreen from './LockSetupScreen';
 import { useQuestStore } from '../state/store';
+import { useNowPlaying } from '../media/useNowPlaying';
+import { useAmbientBed } from '../media/useAmbientBed';
 import { colors } from '../theme';
 
 // Springy reflow so the pane growing and the nav bar sliding down read as one
 // movement when the dock leaves.
 const reflow = LinearTransition.springify().damping(20).stiffness(170).mass(0.6);
 
-// The dock only earns its space where music is part of the moment.
-const DOCKED_SCREENS = ['today', 'focus', 'reward', 'block'];
+// Today only — everywhere else the space reads better empty.
+const DOCKED_SCREENS = ['today'];
 
 export default function RootScreen() {
   const screen = useQuestStore((s) => s.screen);
   const sheetOpen = useQuestStore((s) => s.sheet);
   const playerExpanded = useQuestStore((s) => s.playerExpanded);
   const showDock = DOCKED_SCREENS.includes(screen);
+
+  const { status: mediaStatus } = useNowPlaying(4000);
+  useAmbientBed(mediaStatus);
 
   return (
     <View style={styles.root}>
@@ -82,8 +87,8 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 8,
     paddingHorizontal: 14,
-    paddingTop: 22,
-    paddingBottom: 16,
+    paddingTop: 40,
+    paddingBottom: 32,
   },
   pane: { flex: 1, minHeight: 0 },
 });

@@ -1,4 +1,5 @@
 import { createAudioPlayer } from 'expo-audio';
+import { safePlay } from './safePlay';
 
 // Reward chime: a 3-note triangle-wave ding synthesized offline into
 // assets/sounds/ding.wav (see the original Web Audio version in
@@ -6,7 +7,7 @@ import { createAudioPlayer } from 'expo-audio';
 export function playDing() {
   try {
     const player = createAudioPlayer(require('../../assets/sounds/ding.wav'));
-    player.play();
+    safePlay(player);
     setTimeout(() => {
       try {
         player.release();

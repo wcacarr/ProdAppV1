@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import {
   Nunito_800ExtraBold,
 } from '@expo-google-fonts/nunito';
 import { useFonts as useMonoFonts, IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
+import { useFonts as useBrandFonts, ShipporiMincho_600SemiBold } from '@expo-google-fonts/shippori-mincho';
+import SplashSequence from './src/screens/SplashSequence';
 import RootScreen from './src/screens/RootScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -26,18 +28,21 @@ export default function App() {
     Nunito_800ExtraBold,
   });
   const [monoLoaded] = useMonoFonts({ IBMPlexMono_400Regular, IBMPlexMono_500Medium });
+  const [brandLoaded] = useBrandFonts({ ShipporiMincho_600SemiBold });
+  const [introDone, setIntroDone] = useState(false);
 
   const onLayout = useCallback(async () => {
-    if (nunitoLoaded && monoLoaded) await SplashScreen.hideAsync();
-  }, [nunitoLoaded, monoLoaded]);
+    if (nunitoLoaded && monoLoaded && brandLoaded) await SplashScreen.hideAsync();
+  }, [nunitoLoaded, monoLoaded, brandLoaded]);
 
-  if (!nunitoLoaded || !monoLoaded) return null;
+  if (!nunitoLoaded || !monoLoaded || !brandLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <View style={{ flex: 1 }} onLayout={onLayout}>
           <RootScreen />
+          {!introDone && <SplashSequence onDone={() => setIntroDone(true)} />}
           <StatusBar style="dark" />
         </View>
       </SafeAreaProvider>

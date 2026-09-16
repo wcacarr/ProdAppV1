@@ -47,6 +47,7 @@ export const fonts = {
   bodyBold: 'Nunito_700Bold',
   bodyExtra: 'Nunito_800ExtraBold',
   mono: 'IBMPlexMono_400Regular',
+  brand: 'ShipporiMincho_600SemiBold',
   monoMedium: 'IBMPlexMono_500Medium',
 };
 
