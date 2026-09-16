@@ -12,6 +12,7 @@ import AppsScreen from './AppsScreen';
 import FocusScreen from './FocusScreen';
 import RewardScreen from './RewardScreen';
 import BlockScreen from './BlockScreen';
+import LockSetupScreen from './LockSetupScreen';
 import { useQuestStore } from '../state/store';
 import { colors } from '../theme';
 
@@ -31,6 +32,7 @@ export default function RootScreen() {
           {screen === 'focus' && <FocusScreen />}
           {screen === 'reward' && <RewardScreen />}
           {screen === 'block' && <BlockScreen />}
+          {screen === 'lock' && <LockSetupScreen />}
           <PlayerDock />
         </View>
       </SafeAreaView>

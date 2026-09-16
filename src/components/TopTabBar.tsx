@@ -9,6 +9,7 @@ const TABS: { key: Screen; label: string; num: string }[] = [
   { key: 'today', label: 'Today', num: '1' },
   { key: 'store', label: 'Store', num: '2' },
   { key: 'apps', label: 'Apps', num: '3' },
+  ...(__DEV__ ? [{ key: 'lock' as Screen, label: 'Lock', num: '4' }] : []),
 ];
 
 export default function TopTabBar() {

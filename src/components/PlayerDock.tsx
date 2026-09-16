@@ -3,36 +3,12 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Polygon, Polyline, Rect } from 'react-native-svg';
 import GlassPane from './GlassPane';
 import { colors, fonts, inkAlpha, mmss, radii } from '../theme';
-import { useNowPlaying } from '../spotify/useNowPlaying';
-import { useSpotifyAuth } from '../spotify/useSpotifyAuth';
-import { useQuestStore } from '../state/store';
+import { useNowPlaying } from '../media/useNowPlaying';
 
 export default function PlayerDock() {
-  const { now, status, liveProgressMs, togglePlay, next, previous } = useNowPlaying();
-  const { connect, clientConfigured, authError } = useSpotifyAuth();
-  const flash = useQuestStore((s) => s.flash);
+  const { now, liveProgressMs, togglePlay, next, previous } = useNowPlaying();
 
-  const sourceLabel =
-    status === 'connected' || status === 'no_track'
-      ? 'SPOTIFY · CONNECTED'
-      : status === 'no_device'
-        ? 'SPOTIFY · OPEN THE APP'
-        : status === 'error'
-          ? 'SPOTIFY · ERROR'
-          : 'SPOTIFY · NOT CONNECTED';
-
-  const handleConnect = () => {
-    if (!clientConfigured) {
-      flash('Add EXPO_PUBLIC_SPOTIFY_CLIENT_ID to .env first.');
-      return;
-    }
-    connect();
-  };
-
-  React.useEffect(() => {
-    if (authError) flash(authError);
-  }, [authError, flash]);
-
+  const sourceLabel = now ? 'DEVICE MEDIA' : 'NO MEDIA PLAYING';
   const trackPct = now && now.durationMs ? Math.min(1, liveProgressMs / now.durationMs) : 0;
 
   return (
@@ -48,47 +24,43 @@ export default function PlayerDock() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.sourceRow}>
             <View style={styles.dot} />
-            <Text style={styles.sourceText}>{sourceLabel}</Text>
+            <Text style={styles.sourceText} numberOfLines={1}>
+              {sourceLabel}
+            </Text>
           </View>
           <Text style={styles.trackTitle} numberOfLines={1}>
-            {now?.trackName ?? (status === 'disconnected' ? 'Connect Spotify' : 'Nothing playing')}
+            {now?.trackName ?? 'Nothing playing'}
           </Text>
           <Text style={styles.trackArtist} numberOfLines={1}>
-            {now?.artistName ?? (status === 'disconnected' ? 'Tap to link your account' : 'Start something in Spotify')}
+            {now?.artistName ?? 'Play something in any music app'}
           </Text>
         </View>
-        {status === 'disconnected' ? (
-          <Pressable style={styles.connectBtn} onPress={handleConnect}>
-            <Text style={styles.connectBtnText}>Connect</Text>
+        <View style={[styles.controls, !now && styles.controlsIdle]}>
+          <Pressable style={styles.smallBtn} onPress={previous}>
+            <Svg width={13} height={13} viewBox="0 0 16 16">
+              <Polygon points="14,2 6,8 14,14" fill={colors.ink} />
+              <Rect x={3} y={2} width={2} height={12} fill={colors.ink} />
+            </Svg>
           </Pressable>
-        ) : (
-          <View style={styles.controls}>
-            <Pressable style={styles.smallBtn} onPress={previous}>
-              <Svg width={13} height={13} viewBox="0 0 16 16">
-                <Polygon points="14,2 6,8 14,14" fill={colors.ink} />
-                <Rect x={3} y={2} width={2} height={12} fill={colors.ink} />
+          <Pressable style={styles.playBtn} onPress={togglePlay}>
+            {now?.isPlaying ? (
+              <Svg width={14} height={14} viewBox="0 0 16 16">
+                <Rect x={3} y={2} width={4} height={12} fill={colors.ink} />
+                <Rect x={10} y={2} width={4} height={12} fill={colors.ink} />
               </Svg>
-            </Pressable>
-            <Pressable style={styles.playBtn} onPress={togglePlay}>
-              {now?.isPlaying ? (
-                <Svg width={14} height={14} viewBox="0 0 16 16">
-                  <Rect x={3} y={2} width={4} height={12} fill={colors.ink} />
-                  <Rect x={10} y={2} width={4} height={12} fill={colors.ink} />
-                </Svg>
-              ) : (
-                <Svg width={15} height={15} viewBox="0 0 16 16">
-                  <Polygon points="3,2 14,8 3,14" fill={colors.ink} />
-                </Svg>
-              )}
-            </Pressable>
-            <Pressable style={styles.smallBtn} onPress={next}>
-              <Svg width={13} height={13} viewBox="0 0 16 16">
-                <Polygon points="2,2 10,8 2,14" fill={colors.ink} />
-                <Rect x={11} y={2} width={2} height={12} fill={colors.ink} />
+            ) : (
+              <Svg width={15} height={15} viewBox="0 0 16 16">
+                <Polygon points="3,2 14,8 3,14" fill={colors.ink} />
               </Svg>
-            </Pressable>
-          </View>
-        )}
+            )}
+          </Pressable>
+          <Pressable style={styles.smallBtn} onPress={next}>
+            <Svg width={13} height={13} viewBox="0 0 16 16">
+              <Polygon points="2,2 10,8 2,14" fill={colors.ink} />
+              <Rect x={11} y={2} width={2} height={12} fill={colors.ink} />
+            </Svg>
+          </Pressable>
+        </View>
       </View>
 
       {now && (
@@ -137,6 +109,7 @@ const styles = StyleSheet.create({
   trackTitle: { fontFamily: fonts.bodyBold, fontSize: 13, marginTop: 5, color: colors.ink },
   trackArtist: { fontFamily: fonts.mono, fontSize: 10, marginTop: 3, color: inkAlpha(0.55) },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  controlsIdle: { opacity: 0.45 },
   smallBtn: {
     width: 34,
     height: 34,
