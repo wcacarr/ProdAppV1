@@ -29,8 +29,11 @@ type QuestState = {
 
   toast: string;
   blockPackage: string | null;
+  playerExpanded: boolean;
 
   setScreen: (screen: Screen) => void;
+  setPlayerExpanded: (open: boolean) => void;
+  deleteQuest: (id: number) => void;
   flash: (msg: string) => void;
 
   startQuest: (id: number) => void;
@@ -86,8 +89,16 @@ export const useQuestStore = create<QuestState>((set, get) => ({
 
   toast: '',
   blockPackage: null,
+  playerExpanded: false,
 
   setScreen: (screen) => set({ screen }),
+  setPlayerExpanded: (open) => set({ playerExpanded: open }),
+
+  deleteQuest: (id) => {
+    const quest = get().quests.find((q) => q.id === id);
+    set((s) => ({ quests: s.quests.filter((q) => q.id !== id) }));
+    if (quest) get().flash(`${quest.name} removed.`);
+  },
 
   flash: (msg) => {
     if (toastTimer) clearTimeout(toastTimer);

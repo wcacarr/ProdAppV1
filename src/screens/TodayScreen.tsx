@@ -1,7 +1,16 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
+import SwipeToDelete from '../components/SwipeToDelete';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
 import { fastestRemaining, questMeta } from '../state/selectors';
@@ -16,7 +25,26 @@ export default function TodayScreen() {
   const dayStreak = useQuestStore((s) => s.dayStreak);
   const startQuest = useQuestStore((s) => s.startQuest);
   const openSheet = useQuestStore((s) => s.openSheet);
+  const deleteQuest = useQuestStore((s) => s.deleteQuest);
   const flash = useQuestStore((s) => s.flash);
+
+  // Easter egg: tap the XP box and the whole thing rolls over.
+  const spin = useSharedValue(0);
+  // A flip rather than a Z-spin: a pane this wide sweeps off-screen when it
+  // rotates in-plane, and gets clipped at the top of the phone.
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 900 },
+      { rotateY: `${spin.value}deg` },
+      { scale: 1 - 0.06 * Math.sin((spin.value / 360) * Math.PI) },
+    ],
+  }));
+  const doSpin = () => {
+    spin.value = withSequence(
+      withTiming(360, { duration: 700 }),
+      withTiming(0, { duration: 0 })
+    );
+  };
 
   const rank = rankFor(lifetime);
   const { lockedApps } = useAppRegistry();
@@ -27,6 +55,8 @@ export default function TodayScreen() {
 
   return (
     <>
+      <Animated.View style={spinStyle}>
+      <Pressable onPress={doSpin}>
       <GlassPane
         radius={radii.xl}
         intensity={35}
@@ -50,6 +80,8 @@ export default function TodayScreen() {
           <View style={[styles.progressFill, { width: `${rank.pct}%` }]} />
         </View>
       </GlassPane>
+      </Pressable>
+      </Animated.View>
 
       <GlassPane
         radius={radii.xl}
@@ -66,7 +98,15 @@ export default function TodayScreen() {
         </View>
         <ScrollView contentContainerStyle={styles.listContent}>
           {quests.map((q) => (
-            <QuestRow key={q.id} quest={q} onStart={() => startQuest(q.id)} onClaimed={() => flash('Already claimed today.')} />
+            <Animated.View key={q.id} layout={LinearTransition.springify().damping(20)} exiting={FadeOut.duration(140)}>
+              <SwipeToDelete onDelete={() => deleteQuest(q.id)}>
+                <QuestRow
+                  quest={q}
+                  onStart={() => startQuest(q.id)}
+                  onClaimed={() => flash('Already claimed today.')}
+                />
+              </SwipeToDelete>
+            </Animated.View>
           ))}
 
           <PressableScale style={styles.addQuest} onPress={openSheet}>

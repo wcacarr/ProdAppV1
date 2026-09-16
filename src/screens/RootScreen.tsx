@@ -7,6 +7,7 @@ import TopTabBar from '../components/TopTabBar';
 import PlayerDock from '../components/PlayerDock';
 import AddQuestSheet from '../components/AddQuestSheet';
 import PhotoProofPrompt from '../components/PhotoProofPrompt';
+import ExpandedPlayer from '../components/ExpandedPlayer';
 import Toast from '../components/Toast';
 import TodayScreen from './TodayScreen';
 import StoreScreen from './StoreScreen';
@@ -28,6 +29,7 @@ const DOCKED_SCREENS = ['today', 'focus', 'reward', 'block'];
 export default function RootScreen() {
   const screen = useQuestStore((s) => s.screen);
   const sheetOpen = useQuestStore((s) => s.sheet);
+  const playerExpanded = useQuestStore((s) => s.playerExpanded);
   const showDock = DOCKED_SCREENS.includes(screen);
 
   return (
@@ -65,6 +67,7 @@ export default function RootScreen() {
           )}
         </View>
       </SafeAreaView>
+      {playerExpanded && <ExpandedPlayer />}
       {sheetOpen && <AddQuestSheet />}
       <PhotoProofPrompt />
       <Toast />

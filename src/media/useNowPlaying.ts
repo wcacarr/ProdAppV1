@@ -9,6 +9,7 @@ import {
   mediaPause,
   mediaPlay,
   mediaPrevious,
+  mediaSeekTo,
 } from '../../modules/questlock-blocker';
 
 export type MediaStatus = 'unsupported' | 'needs_permission' | 'idle' | 'active';
@@ -79,5 +80,13 @@ export function useNowPlaying(pollMs = 2000) {
     setTimeout(poll, 600);
   };
 
-  return { now, status, liveProgressMs, togglePlay, next, previous };
+  const seekTo = (positionMs: number) => {
+    if (!now) return;
+    setNow({ ...now, positionMs });
+    fetchedAtRef.current = Date.now();
+    mediaSeekTo(positionMs);
+    setTimeout(poll, 500);
+  };
+
+  return { now, status, liveProgressMs, togglePlay, next, previous, seekTo };
 }

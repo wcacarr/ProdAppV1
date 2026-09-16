@@ -1,14 +1,25 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Polygon, Polyline, Rect } from 'react-native-svg';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS } from 'react-native-reanimated';
 import GlassPane from './GlassPane';
 import PressableScale from './PressableScale';
 import { colors, fonts, inkAlpha, mmss, radii } from '../theme';
 import { useNowPlaying } from '../media/useNowPlaying';
+import { useQuestStore } from '../state/store';
 import { openNotificationAccessSettings } from '../../modules/questlock-blocker';
 
 export default function PlayerDock() {
   const { now, status, liveProgressMs, togglePlay, next, previous } = useNowPlaying();
+  const expand = useQuestStore((s) => s.setPlayerExpanded);
+
+  // Swipe the dock upward for the full player.
+  const swipeUp = Gesture.Pan()
+    .activeOffsetY([-14, 14])
+    .onEnd((e) => {
+      if (e.translationY < -40 || e.velocityY < -600) runOnJS(expand)(true);
+    });
 
   const sourceLabel =
     status === 'active'
@@ -28,7 +39,10 @@ export default function PlayerDock() {
   const trackPct = now && now.durationMs ? Math.min(1, liveProgressMs / now.durationMs) : 0;
 
   return (
-    <GlassPane radius={18} intensity={36} contentStyle={styles.pad}>
+    <GestureDetector gesture={swipeUp}>
+      <Animated.View>
+        <GlassPane radius={18} intensity={36} contentStyle={styles.pad}>
+          <View style={styles.grabber} />
       <View style={styles.row}>
         <View style={styles.art}>
           {now?.albumArtUrl ? (
@@ -91,7 +105,9 @@ export default function PlayerDock() {
           <Text style={styles.time}>{mmss(now.durationMs / 1000)}</Text>
         </View>
       )}
-    </GlassPane>
+        </GlassPane>
+      </Animated.View>
+    </GestureDetector>
   );
 }
 
@@ -111,7 +127,15 @@ function MiniScene() {
 }
 
 const styles = StyleSheet.create({
-  pad: { paddingTop: 9, paddingHorizontal: 11, paddingBottom: 10 },
+  pad: { paddingTop: 6, paddingHorizontal: 11, paddingBottom: 10 },
+  grabber: {
+    width: 32,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: inkAlpha(0.18),
+    alignSelf: 'center',
+    marginBottom: 7,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   art: {
     width: 40,

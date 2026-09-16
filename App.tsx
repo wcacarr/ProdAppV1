@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts as useNunitoFonts,
@@ -33,11 +34,13 @@ export default function App() {
   if (!nunitoLoaded || !monoLoaded) return null;
 
   return (
-    <SafeAreaProvider>
-      <View style={{ flex: 1 }} onLayout={onLayout}>
-        <RootScreen />
-        <StatusBar style="dark" />
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <View style={{ flex: 1 }} onLayout={onLayout}>
+          <RootScreen />
+          <StatusBar style="dark" />
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

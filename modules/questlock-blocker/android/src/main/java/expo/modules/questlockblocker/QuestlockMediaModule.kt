@@ -36,6 +36,10 @@ class QuestlockMediaModule : Module() {
       nowPlaying()
     }
 
+    Function("seekTo") { positionMs: Double ->
+      seek(positionMs)
+    }
+
     Function("play") { sendTransport("play") }
     Function("pause") { sendTransport("pause") }
     Function("next") { sendTransport("next") }
@@ -152,6 +156,19 @@ class QuestlockMediaModule : Module() {
         "next" -> controls.skipToNext()
         "previous" -> controls.skipToPrevious()
       }
+      return true
+    } catch (e: Throwable) {
+      return false
+    }
+  }
+
+  private fun seek(positionMs: Double): Boolean {
+    val controller = activeController()
+    if (controller == null) {
+      return false
+    }
+    try {
+      controller.transportControls.seekTo(positionMs.toLong())
       return true
     } catch (e: Throwable) {
       return false

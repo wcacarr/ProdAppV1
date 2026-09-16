@@ -41,6 +41,7 @@ type MediaNative = {
   isNotificationAccessGranted: () => boolean;
   openNotificationAccessSettings: () => void;
   getNowPlaying: () => DeviceNowPlaying | null;
+  seekTo: (positionMs: number) => boolean;
   play: () => boolean;
   pause: () => boolean;
   next: () => boolean;
@@ -72,6 +73,7 @@ export const isBlockedNow = (packageName: string) => blocker?.isBlockedNow(packa
 export const isNotificationAccessGranted = () => media?.isNotificationAccessGranted() ?? false;
 export const openNotificationAccessSettings = () => media?.openNotificationAccessSettings();
 export const getDeviceNowPlaying = (): DeviceNowPlaying | null => media?.getNowPlaying() ?? null;
+export const mediaSeekTo = (positionMs: number) => media?.seekTo(positionMs) ?? false;
 export const mediaPlay = () => media?.play() ?? false;
 export const mediaPause = () => media?.pause() ?? false;
 export const mediaNext = () => media?.next() ?? false;
