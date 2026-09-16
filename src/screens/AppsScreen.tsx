@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
     paddingBottom: 10,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 13 },
-  tileWrap: { width: '23%', alignItems: 'center', gap: 6 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 13 },
+  tileWrap: { width: '25%', alignItems: 'center', gap: 6 },
   tile: {
     width: 50,
     height: 50,

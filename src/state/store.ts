@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { xpFor } from '../theme';
-import { INITIAL_APPS, INITIAL_QUESTS, offerList } from './data';
+import { INITIAL_APPS, INITIAL_QUESTS } from './data';
 import { LockedApp, Offer, Quest, Reward, Screen } from './types';
 import { playDing } from '../sound/ding';
 
@@ -35,7 +35,6 @@ type QuestState = {
   completeQuest: () => void;
   bailQuest: () => void;
 
-  offers: () => Offer[];
   buy: (offer: Offer) => void;
 
   openBlock: (appId: string) => void;
@@ -155,8 +154,6 @@ export const useQuestStore = create<QuestState>((set, get) => ({
       rewardCounter: gain,
     });
   },
-
-  offers: () => offerList(get().apps),
 
   buy: (offer) => {
     const s = get();

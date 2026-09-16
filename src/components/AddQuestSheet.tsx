@@ -10,11 +10,13 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
 import { DURATION_CHOICES, PRESETS } from '../state/data';
 
 export default function AddQuestSheet() {
+  const insets = useSafeAreaInsets();
   const closeSheet = useQuestStore((s) => s.closeSheet);
   const draftName = useQuestStore((s) => s.draftName);
   const draftMins = useQuestStore((s) => s.draftMins);
@@ -31,7 +33,7 @@ export default function AddQuestSheet() {
         style={styles.sheetOuter}
         pointerEvents="box-none"
       >
-        <View style={styles.sheetClip}>
+        <View style={[styles.sheetClip, { marginBottom: 8 + insets.bottom }]}>
           <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassSheet }]} />
           <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">

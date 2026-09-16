@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fonts } from '../theme';
 import { useQuestStore } from '../state/store';
 
 export default function Toast() {
+  const insets = useSafeAreaInsets();
   const toast = useQuestStore((s) => s.toast);
   const v = useRef(new Animated.Value(0)).current;
 
@@ -20,7 +22,10 @@ export default function Toast() {
   const translateY = v.interpolate({ inputRange: [0, 0.12, 0.82, 1], outputRange: [16, 0, 0, 6] });
 
   return (
-    <Animated.View style={[styles.wrap, { opacity, transform: [{ translateY }] }]} pointerEvents="none">
+    <Animated.View
+      style={[styles.wrap, { bottom: 116 + insets.bottom, opacity, transform: [{ translateY }] }]}
+      pointerEvents="none"
+    >
       <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
       <Text style={styles.text}>{toast}</Text>
     </Animated.View>
@@ -32,7 +37,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 14,
     right: 14,
-    bottom: 116,
     borderRadius: 14,
     padding: 12,
     paddingHorizontal: 14,

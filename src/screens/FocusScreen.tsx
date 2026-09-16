@@ -7,7 +7,6 @@ import { useQuestStore } from '../state/store';
 
 const RING_R = 102;
 const RING_LEN = 2 * Math.PI * RING_R;
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function FocusScreen() {
   const quests = useQuestStore((s) => s.quests);
@@ -53,19 +52,21 @@ export default function FocusScreen() {
             <Circle cx={114} cy={114} r={74} />
           </G>
         </Svg>
-        <Svg width={228} height={228} style={StyleSheet.absoluteFill} rotation={-90} origin="114,114">
-          <Circle cx={114} cy={114} r={RING_R} stroke="rgba(34,32,27,0.13)" strokeWidth={6} fill="none" />
-          <AnimatedCircle
-            cx={114}
-            cy={114}
-            r={RING_R}
-            stroke={colors.ochre}
-            strokeWidth={6}
-            strokeLinecap="round"
-            fill="none"
-            strokeDasharray={`${RING_LEN} ${RING_LEN}`}
-            strokeDashoffset={RING_LEN * (1 - progress)}
-          />
+        <Svg width={228} height={228} style={StyleSheet.absoluteFill}>
+          <G rotation={-90} origin="114,114">
+            <Circle cx={114} cy={114} r={RING_R} stroke="rgba(34,32,27,0.13)" strokeWidth={6} fill="none" />
+            <Circle
+              cx={114}
+              cy={114}
+              r={RING_R}
+              stroke={colors.ochre}
+              strokeWidth={6}
+              strokeLinecap="round"
+              fill="none"
+              strokeDasharray={`${RING_LEN} ${RING_LEN}`}
+              strokeDashoffset={RING_LEN * (1 - progress)}
+            />
+          </G>
         </Svg>
         <View style={styles.ringCenter}>
           <Text style={styles.clock}>{mmss(focusLeft)}</Text>

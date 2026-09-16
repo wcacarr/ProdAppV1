@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import { colors, fonts, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
+import { offerList } from '../state/data';
 import { fastestRemaining } from '../state/selectors';
 
 const paperAlpha = (a: number) => `rgba(253,248,232,${a})`;
@@ -13,8 +14,8 @@ export default function BlockScreen() {
   const quests = useQuestStore((s) => s.quests);
   const balance = useQuestStore((s) => s.balance);
   const strictMode = useQuestStore((s) => s.strictMode);
-  const offers = useQuestStore((s) => s.offers());
   const buy = useQuestStore((s) => s.buy);
+  const offers = useMemo(() => offerList(apps), [apps]);
   const closeBlock = useQuestStore((s) => s.closeBlock);
   const startQuest = useQuestStore((s) => s.startQuest);
   const flash = useQuestStore((s) => s.flash);

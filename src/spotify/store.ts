@@ -36,17 +36,21 @@ export const useSpotifyAuthStore = create<SpotifyAuthState>((set, get) => ({
 
   hydrate: async () => {
     if (get().hydrated) return;
-    const [accessToken, refreshToken, expiresAtRaw] = await Promise.all([
-      SecureStore.getItemAsync(KEY_ACCESS),
-      SecureStore.getItemAsync(KEY_REFRESH),
-      SecureStore.getItemAsync(KEY_EXPIRES),
-    ]);
-    set({
-      accessToken,
-      refreshToken,
-      expiresAt: expiresAtRaw ? Number(expiresAtRaw) : null,
-      hydrated: true,
-    });
+    try {
+      const [accessToken, refreshToken, expiresAtRaw] = await Promise.all([
+        SecureStore.getItemAsync(KEY_ACCESS),
+        SecureStore.getItemAsync(KEY_REFRESH),
+        SecureStore.getItemAsync(KEY_EXPIRES),
+      ]);
+      set({
+        accessToken,
+        refreshToken,
+        expiresAt: expiresAtRaw ? Number(expiresAtRaw) : null,
+        hydrated: true,
+      });
+    } catch {
+      set({ hydrated: true });
+    }
   },
 
   setTokens: async ({ accessToken, refreshToken, expiresIn }) => {

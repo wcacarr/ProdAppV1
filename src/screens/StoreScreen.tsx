@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import { colors, fonts, inkAlpha, radii } from '../theme';
 import { useQuestStore } from '../state/store';
-import { TILE_BG } from '../state/data';
+import { TILE_BG, offerList } from '../state/data';
 import { Offer } from '../state/types';
 
 export default function StoreScreen() {
   const balance = useQuestStore((s) => s.balance);
   const apps = useQuestStore((s) => s.apps);
-  const offers = useQuestStore((s) => s.offers());
   const buy = useQuestStore((s) => s.buy);
+  const offers = useMemo(() => offerList(apps), [apps]);
 
   return (
     <GlassPane

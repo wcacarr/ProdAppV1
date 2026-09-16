@@ -42,29 +42,17 @@ export default function GlassPane({
         style,
       ]}
     >
-      <View
-        style={[
-          styles.clip,
-          {
-            borderRadius: radius,
-            borderColor,
-          },
-        ]}
-      >
-        <BlurView
-          intensity={intensity}
-          tint={dark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
+      <View style={[StyleSheet.absoluteFill, styles.glass, { borderRadius: radius, borderColor }]}>
+        <BlurView intensity={intensity} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} />
-        <View style={contentStyle}>{children}</View>
       </View>
+      <View style={contentStyle}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  clip: {
+  glass: {
     overflow: 'hidden',
     borderWidth: 1,
   },
