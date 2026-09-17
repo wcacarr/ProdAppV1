@@ -17,6 +17,7 @@ import FocusScreen from './FocusScreen';
 import RewardScreen from './RewardScreen';
 import BlockScreen from './BlockScreen';
 import LockSetupScreen from './LockSetupScreen';
+import SettingsScreen from './SettingsScreen';
 import { useQuestStore } from '../state/store';
 import { useNowPlaying } from '../media/useNowPlaying';
 import { useAmbientBed } from '../media/useAmbientBed';
@@ -35,8 +36,9 @@ export default function RootScreen() {
   const playerExpanded = useQuestStore((s) => s.playerExpanded);
   const showDock = DOCKED_SCREENS.includes(screen);
 
-  const { status: mediaStatus } = useNowPlaying(4000);
-  useAmbientBed(mediaStatus);
+  const { now } = useNowPlaying(4000);
+  const musicEnabled = useQuestStore((s) => s.musicEnabled);
+  useAmbientBed(!!now?.isPlaying, musicEnabled);
 
   return (
     <View style={styles.root}>
@@ -56,6 +58,7 @@ export default function RootScreen() {
             {screen === 'reward' && <RewardScreen />}
             {screen === 'block' && <BlockScreen />}
             {screen === 'lock' && <LockSetupScreen />}
+            {screen === 'settings' && <SettingsScreen />}
             <RippleTransition trigger={screen} />
           </Animated.View>
 

@@ -33,7 +33,7 @@ export function useNowPlaying(pollMs = 2000) {
     const playing = getDeviceNowPlaying();
     fetchedAtRef.current = Date.now();
     setNow(playing);
-    setStatus(playing ? 'active' : 'idle');
+    setStatus(playing?.isPlaying ? 'active' : 'idle');
   }, []);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-export type Screen = 'today' | 'store' | 'apps' | 'focus' | 'reward' | 'block' | 'lock';
+export type Screen = 'today' | 'store' | 'apps' | 'focus' | 'reward' | 'block' | 'lock' | 'settings';
 
 export type Quest = {
   id: number;

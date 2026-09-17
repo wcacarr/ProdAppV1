@@ -22,7 +22,7 @@ export default function PlayerDock() {
     });
 
   const sourceLabel =
-    status === 'active'
+    now
       ? 'DEVICE MEDIA'
       : status === 'needs_permission'
         ? 'TAP TO CONNECT MEDIA'

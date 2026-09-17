@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { xpFor } from '../theme';
 import { INITIAL_QUESTS } from './data';
 import { Offer, Quest, Reward, Screen } from './types';
@@ -30,9 +32,11 @@ type QuestState = {
   toast: string;
   blockPackage: string | null;
   playerExpanded: boolean;
+  musicEnabled: boolean;
 
   setScreen: (screen: Screen) => void;
   setPlayerExpanded: (open: boolean) => void;
+  setMusicEnabled: (on: boolean) => void;
   deleteQuest: (id: number) => void;
   flash: (msg: string) => void;
 
@@ -66,11 +70,13 @@ function clearFocusTimer() {
   }
 }
 
-export const useQuestStore = create<QuestState>((set, get) => ({
+export const useQuestStore = create<QuestState>()(
+  persist(
+    (set, get) => ({
   screen: 'today',
-  balance: 145,
-  lifetime: 1340,
-  dayStreak: 12,
+  balance: 0,
+  lifetime: 0,
+  dayStreak: 1,
   quests: INITIAL_QUESTS,
 
   activeId: null,
@@ -90,9 +96,11 @@ export const useQuestStore = create<QuestState>((set, get) => ({
   toast: '',
   blockPackage: null,
   playerExpanded: false,
+  musicEnabled: true,
 
   setScreen: (screen) => set({ screen }),
   setPlayerExpanded: (open) => set({ playerExpanded: open }),
+  setMusicEnabled: (on) => set({ musicEnabled: on }),
 
   deleteQuest: (id) => {
     const quest = get().quests.find((q) => q.id === id);
@@ -239,9 +247,24 @@ export const useQuestStore = create<QuestState>((set, get) => ({
       draftName: '',
       draftNeedsPhoto: false,
     }));
-    get().flash(`${name} added to today.`);
-  },
-}));
+      get().flash(`${name} added to today.`);
+      },
+    }),
+    {
+      name: 'tasuku-store-v1',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Progress and settings survive; anything in-flight (timers, sheets,
+      // the current screen) deliberately does not.
+      partialize: (s) => ({
+        balance: s.balance,
+        lifetime: s.lifetime,
+        dayStreak: s.dayStreak,
+        quests: s.quests,
+        musicEnabled: s.musicEnabled,
+      }),
+    }
+  )
+);
 
 type Setter = (partial: Partial<QuestState> | ((s: QuestState) => Partial<QuestState>)) => void;
 
