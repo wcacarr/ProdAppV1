@@ -1,17 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
+import TimeSlotSheet from '../components/TimeSlotSheet';
 import { colors, fonts, inkAlpha, radii } from '../theme';
 import { useQuestStore } from '../state/store';
 import { rankFor } from '../state/ranks';
+import {
+  MIN_WINDOW_MIN,
+  allDaySlots,
+  formatSlot,
+  isWithinNightly,
+  minutesOfDay,
+} from '../state/schedule';
+
+/** Which time is being edited, if any. */
+type Editing = 'dayStart' | 'dayEnd' | 'bedtime' | 'wake' | null;
 
 export default function SettingsScreen() {
   const musicEnabled = useQuestStore((s) => s.musicEnabled);
   const setMusicEnabled = useQuestStore((s) => s.setMusicEnabled);
   const lifetime = useQuestStore((s) => s.lifetime);
   const quests = useQuestStore((s) => s.quests);
+  const dayWindow = useQuestStore((s) => s.dayWindow);
+  const setDayWindow = useQuestStore((s) => s.setDayWindow);
+  const bedtimeEnabled = useQuestStore((s) => s.bedtimeEnabled);
+  const bedtimeStartMin = useQuestStore((s) => s.bedtimeStartMin);
+  const bedtimeWakeMin = useQuestStore((s) => s.bedtimeWakeMin);
+  const setBedtime = useQuestStore((s) => s.setBedtime);
   const rank = rankFor(lifetime);
+
+  const [editing, setEditing] = useState<Editing>(null);
+  const dayLength = dayWindow.endMin - dayWindow.startMin;
+  const asleepNow =
+    bedtimeEnabled && isWithinNightly(minutesOfDay(), bedtimeStartMin, bedtimeWakeMin);
 
   return (
     <GlassPane
@@ -27,6 +49,44 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.sectionLabel}>YOUR DAY</Text>
+        <View style={styles.card}>
+          <Text style={styles.rowTitle}>Work hours</Text>
+          <Text style={styles.rowBody}>
+            The stretch your quest calendar covers. Anything scheduled outside a narrowed window
+            gets pulled back inside it.
+          </Text>
+          <View style={styles.timePair}>
+            <TimeField label="STARTS" value={dayWindow.startMin} onPress={() => setEditing('dayStart')} />
+            <TimeField label="ENDS" value={dayWindow.endMin} onPress={() => setEditing('dayEnd')} />
+          </View>
+          <Text style={styles.cardFoot}>
+            {formatDuration(dayLength)} long
+            {dayLength > 12 * 60 ? ' — longer than the twelve hours most people can hold' : ''}
+          </Text>
+        </View>
+
+        <Text style={styles.sectionLabel}>BEDTIME</Text>
+        <Toggle
+          on={bedtimeEnabled}
+          title="Relock everything overnight"
+          body="Between these times every locked app shuts regardless of XP, and no amount of it will buy the night back."
+          onToggle={() => setBedtime({ enabled: !bedtimeEnabled })}
+        />
+        {bedtimeEnabled && (
+          <View style={[styles.card, { marginTop: 8 }]}>
+            <View style={styles.timePair}>
+              <TimeField label="LOCKS AT" value={bedtimeStartMin} onPress={() => setEditing('bedtime')} />
+              <TimeField label="OPENS AT" value={bedtimeWakeMin} onPress={() => setEditing('wake')} />
+            </View>
+            <Text style={[styles.cardFoot, asleepNow && { color: colors.ochreDeep }]}>
+              {asleepNow
+                ? `Bedtime is on right now — locked apps stay shut until ${formatSlot(bedtimeWakeMin)}.`
+                : `Everything locked will shut at ${formatSlot(bedtimeStartMin)}.`}
+            </Text>
+          </View>
+        )}
+
         <Text style={styles.sectionLabel}>SOUND</Text>
         <Toggle
           on={musicEnabled}
@@ -51,8 +111,71 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {editing && (
+        <TimeSlotSheet
+          title={EDIT_TITLES[editing]}
+          subtitle={EDIT_SUBTITLES[editing]}
+          value={
+            editing === 'dayStart'
+              ? dayWindow.startMin
+              : editing === 'dayEnd'
+                ? dayWindow.endMin
+                : editing === 'bedtime'
+                  ? bedtimeStartMin
+                  : bedtimeWakeMin
+          }
+          slots={allDaySlots()}
+          onPick={(min) => {
+            if (editing === 'dayStart') setDayWindow({ startMin: min });
+            else if (editing === 'dayEnd') setDayWindow({ endMin: min });
+            else if (editing === 'bedtime') setBedtime({ startMin: min });
+            else setBedtime({ wakeMin: min });
+            setEditing(null);
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </GlassPane>
   );
+}
+
+const EDIT_TITLES: Record<Exclude<Editing, null>, string> = {
+  dayStart: 'Day starts at',
+  dayEnd: 'Day ends at',
+  bedtime: 'Lock everything at',
+  wake: 'Open again at',
+};
+
+const EDIT_SUBTITLES: Record<Exclude<Editing, null>, string> = {
+  dayStart: 'THE FIRST SLOT ON YOUR CALENDAR',
+  dayEnd: `THE LAST SLOT · AT LEAST ${MIN_WINDOW_MIN} MIN AFTER THE START`,
+  bedtime: 'WHEN THE NIGHT SHUTS EVERYTHING',
+  wake: 'WHEN BOUGHT TIME WORKS AGAIN',
+};
+
+function TimeField({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale style={styles.timeField} onPress={onPress} scaleTo={0.97}>
+      <Text style={styles.timeFieldLabel}>{label}</Text>
+      <Text style={styles.timeFieldValue}>{formatSlot(value)}</Text>
+    </PressableScale>
+  );
+}
+
+function formatDuration(mins: number) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (!h) return `${m} min`;
+  return m ? `${h}h ${m}m` : `${h} hours`;
 }
 
 function Toggle({
@@ -123,6 +246,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
   },
+  card: {
+    padding: 12,
+    borderRadius: radii.md,
+    backgroundColor: colors.glassCard,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.13),
+  },
+  cardFoot: { fontFamily: fonts.mono, fontSize: 9.5, lineHeight: 15, color: inkAlpha(0.5), marginTop: 10 },
+  timePair: { flexDirection: 'row', gap: 8, marginTop: 11 },
+  timeField: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255,252,242,.85)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.16),
+  },
+  timeFieldLabel: { fontFamily: fonts.mono, fontSize: 8.5, letterSpacing: 1.2, color: inkAlpha(0.45) },
+  timeFieldValue: { fontFamily: fonts.bodyExtra, fontSize: 15, color: colors.ink, marginTop: 4 },
+
   rowTitle: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink },
   rowBody: { fontFamily: fonts.body, fontSize: 11.5, lineHeight: 17, color: inkAlpha(0.6), marginTop: 3 },
   switch: {

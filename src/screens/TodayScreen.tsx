@@ -17,7 +17,15 @@ import { fastestRemaining, questReward } from '../state/selectors';
 import { rankFor } from '../state/ranks';
 import { useAppRegistry } from '../state/useAppRegistry';
 import { Quest } from '../state/types';
-import { bookedMinutes, formatSlot, formatSlotShort, overlaps, sortedByStart } from '../state/schedule';
+import {
+  bookedMinutes,
+  formatSlot,
+  formatSlotShort,
+  overlaps,
+  slotChoices,
+  sortedByStart,
+  windowLabel,
+} from '../state/schedule';
 
 // Rows have to be a uniform height for the drag maths to work.
 const ROW_CONTENT_H = 56;
@@ -37,6 +45,7 @@ export default function TodayScreen() {
   const openTimeEditor = useQuestStore((s) => s.openTimeEditor);
   const closeTimeEditor = useQuestStore((s) => s.closeTimeEditor);
   const setQuestStart = useQuestStore((s) => s.setQuestStart);
+  const dayWindow = useQuestStore((s) => s.dayWindow);
   const flash = useQuestStore((s) => s.flash);
 
   // Easter egg: tap the XP box and the whole thing rolls over.
@@ -61,6 +70,7 @@ export default function TodayScreen() {
   const { lockedApps } = useAppRegistry();
   const lockedLabel = lockedApps[0]?.label ?? null;
   const schedule = useMemo(() => sortedByStart(quests), [quests]);
+  const slots = useMemo(() => slotChoices(dayWindow), [dayWindow]);
   const remaining = quests.filter((q) => !q.done);
   const fastest = fastestRemaining(quests);
   const doneCount = quests.filter((q) => q.done).length;
@@ -112,7 +122,7 @@ export default function TodayScreen() {
             </Text>
           </View>
           <Text style={styles.listSubtitle}>
-            7AM – 7PM · {formatDuration(booked)} BOOKED
+            {windowLabel(dayWindow)} · {formatDuration(booked)} BOOKED
             {quests.length > 1 ? ' · HOLD TO MOVE' : ''}
           </Text>
         </View>
@@ -160,6 +170,7 @@ export default function TodayScreen() {
           title={editing.name}
           subtitle={`${editing.mins} MIN · CURRENTLY ${formatSlot(editing.startMin).toUpperCase()}`}
           value={editing.startMin}
+          slots={slots}
           onPick={(startMin) => setQuestStart(editing.id, startMin)}
           onClose={closeTimeEditor}
         />

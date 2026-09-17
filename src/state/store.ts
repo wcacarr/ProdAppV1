@@ -3,10 +3,23 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { xpFor } from '../theme';
 import { INITIAL_QUESTS } from './data';
-import { DAY_START_MIN, ceilToDay, clampToDay, nextFreeSlot, reorderByStart } from './schedule';
+import {
+  DEFAULT_WINDOW,
+  DayWindow,
+  MIN_WINDOW_MIN,
+  SLOT_MIN,
+  ceilToWindow,
+  clampToWindow,
+  formatSlot,
+  isWithinNightly,
+  minutesOfDay,
+  nextFreeSlot,
+  refitToWindow,
+  reorderByStart,
+} from './schedule';
 import { Offer, Quest, Reward, Screen } from './types';
 import { playDing } from '../sound/ding';
-import { grantUnlock } from '../../modules/questlock-blocker';
+import { grantUnlock, setBedtime as setNativeBedtime } from '../../modules/questlock-blocker';
 
 type QuestState = {
   screen: Screen;
@@ -38,9 +51,19 @@ type QuestState = {
   playerExpanded: boolean;
   musicEnabled: boolean;
 
+  /** The stretch of the day quests can be scheduled in. */
+  dayWindow: DayWindow;
+  bedtimeEnabled: boolean;
+  bedtimeStartMin: number;
+  bedtimeWakeMin: number;
+
   setScreen: (screen: Screen) => void;
   setPlayerExpanded: (open: boolean) => void;
   setMusicEnabled: (on: boolean) => void;
+  setDayWindow: (window: Partial<DayWindow>) => void;
+  setBedtime: (next: Partial<{ enabled: boolean; startMin: number; wakeMin: number }>) => void;
+  /** Pushes the bedtime window down to the native blocker (boot, rehydrate). */
+  syncBedtime: () => void;
   deleteQuest: (id: number) => void;
   reorderQuests: (from: number, to: number) => void;
   openTimeEditor: (id: number) => void;
@@ -73,6 +96,16 @@ type QuestState = {
 
 let focusTimer: ReturnType<typeof setInterval> | null = null;
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Settings times land on the same quarter-hour grid as the calendar. */
+const snap = (min: number) => Math.round(min / SLOT_MIN) * SLOT_MIN;
+
+type BedtimeFields = Pick<QuestState, 'bedtimeEnabled' | 'bedtimeStartMin' | 'bedtimeWakeMin'>;
+
+/** True while the overnight relock is in force. */
+export function isBedtimeActive(s: BedtimeFields) {
+  return s.bedtimeEnabled && isWithinNightly(minutesOfDay(), s.bedtimeStartMin, s.bedtimeWakeMin);
+}
 
 function clearFocusTimer() {
   if (focusTimer) {
@@ -121,7 +154,7 @@ export const useQuestStore = create<QuestState>()(
   draftName: '',
   draftMins: 25,
   draftNeedsPhoto: false,
-  draftStartMin: DAY_START_MIN,
+  draftStartMin: DEFAULT_WINDOW.startMin,
   editingTimeId: null,
 
   toast: '',
@@ -129,9 +162,39 @@ export const useQuestStore = create<QuestState>()(
   playerExpanded: false,
   musicEnabled: true,
 
+  dayWindow: DEFAULT_WINDOW,
+  bedtimeEnabled: false,
+  bedtimeStartMin: 22 * 60,
+  bedtimeWakeMin: 7 * 60,
+
   setScreen: (screen) => set({ screen }),
   setPlayerExpanded: (open) => set({ playerExpanded: open }),
   setMusicEnabled: (on) => set({ musicEnabled: on }),
+
+  // Narrowing the window drags any quest that fell outside it back in, rather
+  // than leaving it stranded at a time the calendar no longer shows.
+  setDayWindow: (next) =>
+    set((s) => {
+      const merged = { ...s.dayWindow, ...next };
+      const startMin = Math.max(0, Math.min(1440 - MIN_WINDOW_MIN, snap(merged.startMin)));
+      const endMin = Math.min(1440, Math.max(startMin + MIN_WINDOW_MIN, snap(merged.endMin)));
+      const dayWindow = { startMin, endMin };
+      return { dayWindow, quests: refitToWindow(s.quests, dayWindow) };
+    }),
+
+  setBedtime: (next) => {
+    set((s) => ({
+      bedtimeEnabled: next.enabled ?? s.bedtimeEnabled,
+      bedtimeStartMin: next.startMin != null ? snap(next.startMin) : s.bedtimeStartMin,
+      bedtimeWakeMin: next.wakeMin != null ? snap(next.wakeMin) : s.bedtimeWakeMin,
+    }));
+    get().syncBedtime();
+  },
+
+  syncBedtime: () => {
+    const s = get();
+    setNativeBedtime(s.bedtimeEnabled, s.bedtimeStartMin, s.bedtimeWakeMin);
+  },
 
   deleteQuest: (id) => {
     const quest = get().quests.find((q) => q.id === id);
@@ -149,7 +212,9 @@ export const useQuestStore = create<QuestState>()(
   setQuestStart: (id, startMin) =>
     set((s) => ({
       editingTimeId: null,
-      quests: s.quests.map((q) => (q.id === id ? { ...q, startMin: clampToDay(startMin) } : q)),
+      quests: s.quests.map((q) =>
+        q.id === id ? { ...q, startMin: clampToWindow(startMin, s.dayWindow) } : q
+      ),
     })),
 
   flash: (msg) => {
@@ -246,6 +311,12 @@ export const useQuestStore = create<QuestState>()(
 
   buy: (offer) => {
     const s = get();
+    // Overnight the native blocker ignores bought time, so selling it would be
+    // taking XP for nothing.
+    if (isBedtimeActive(s)) {
+      s.flash(`Bedtime until ${formatSlot(s.bedtimeWakeMin)}. Nothing to buy till then.`);
+      return;
+    }
     if (s.balance < offer.cost) {
       s.flash(`${offer.cost - s.balance} XP short. One quest should cover it.`);
       return;
@@ -263,12 +334,16 @@ export const useQuestStore = create<QuestState>()(
   closeBlock: () => set({ screen: 'apps', blockPackage: null }),
 
   openSheet: () =>
-    set((s) => ({ sheet: true, draftStartMin: nextFreeSlot(s.quests, s.draftMins) })),
+    set((s) => ({
+      sheet: true,
+      draftStartMin: nextFreeSlot(s.quests, s.draftMins, s.dayWindow),
+    })),
   closeSheet: () => set({ sheet: false }),
   setDraftName: (name) => set({ draftName: name }),
   setDraftMins: (mins) => set({ draftMins: mins }),
   setDraftNeedsPhoto: (needsPhoto) => set({ draftNeedsPhoto: needsPhoto }),
-  setDraftStartMin: (startMin) => set({ draftStartMin: clampToDay(startMin) }),
+  setDraftStartMin: (startMin) =>
+    set((s) => ({ draftStartMin: clampToWindow(startMin, s.dayWindow) })),
 
   addPreset: (name, mins, glyph, needsPhoto) => {
     set((s) => ({
@@ -281,7 +356,7 @@ export const useQuestStore = create<QuestState>()(
           glyph,
           done: false,
           needsPhoto,
-          startMin: nextFreeSlot(s.quests, mins),
+          startMin: nextFreeSlot(s.quests, mins, s.dayWindow),
         },
       ],
       sheet: false,
@@ -328,6 +403,10 @@ export const useQuestStore = create<QuestState>()(
         dayStreak: s.dayStreak,
         quests: s.quests,
         musicEnabled: s.musicEnabled,
+        dayWindow: s.dayWindow,
+        bedtimeEnabled: s.bedtimeEnabled,
+        bedtimeStartMin: s.bedtimeStartMin,
+        bedtimeWakeMin: s.bedtimeWakeMin,
         activeId: s.activeId,
         focusEndAt: s.focusEndAt,
         focusTotal: s.focusTotal,
@@ -337,17 +416,22 @@ export const useQuestStore = create<QuestState>()(
       migrate: (persisted, version) => {
         const state = persisted as Partial<QuestState> | undefined;
         if (!state || version >= 2) return state as QuestState;
-        let cursor = DAY_START_MIN;
+        let cursor = DEFAULT_WINDOW.startMin;
         const quests = (state.quests ?? []).map((q) => {
-          const startMin = ceilToDay(cursor);
+          const startMin = ceilToWindow(cursor, DEFAULT_WINDOW);
           cursor = startMin + Math.max(q.mins, 30);
           return { ...q, startMin };
         });
         return { ...state, quests } as QuestState;
       },
-      // A quest that was running when the app was killed picks up where the
-      // clock says it should be, not where it was when we lost focus.
-      onRehydrateStorage: () => (state) => state?.syncFocus(),
+      onRehydrateStorage: () => (state) => {
+        // A quest that was running when the app was killed picks up where the
+        // clock says it should be, not where it was when we lost focus.
+        state?.syncFocus();
+        // Native prefs can be wiped (clear data) without touching ours, so the
+        // saved bedtime window is re-asserted on every start.
+        state?.syncBedtime();
+      },
     }
   )
 );

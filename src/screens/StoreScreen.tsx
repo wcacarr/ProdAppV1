@@ -3,8 +3,9 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 're
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
 import { colors, fonts, inkAlpha, radii } from '../theme';
-import { useQuestStore } from '../state/store';
+import { isBedtimeActive, useQuestStore } from '../state/store';
 import { UNLOCK_TIERS } from '../state/data';
+import { formatSlot } from '../state/schedule';
 import { useAppRegistry } from '../state/useAppRegistry';
 import { Offer } from '../state/types';
 
@@ -12,6 +13,10 @@ export default function StoreScreen() {
   const balance = useQuestStore((s) => s.balance);
   const buy = useQuestStore((s) => s.buy);
   const setScreen = useQuestStore((s) => s.setScreen);
+  const bedtimeEnabled = useQuestStore((s) => s.bedtimeEnabled);
+  const bedtimeStartMin = useQuestStore((s) => s.bedtimeStartMin);
+  const bedtimeWakeMin = useQuestStore((s) => s.bedtimeWakeMin);
+  const asleep = isBedtimeActive({ bedtimeEnabled, bedtimeStartMin, bedtimeWakeMin });
   const { lockedApps, loading } = useAppRegistry();
 
   const tiles = useMemo(
@@ -48,6 +53,15 @@ export default function StoreScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {asleep && (
+          <View style={styles.bedtime}>
+            <Text style={styles.bedtimeTitle}>Bedtime</Text>
+            <Text style={styles.bedtimeBody}>
+              Everything locked is shut until {formatSlot(bedtimeWakeMin)}, and XP will not open it.
+              Keep it for the morning.
+            </Text>
+          </View>
+        )}
         {tiles.length === 0 && loading ? (
           <View style={styles.emptyWrap}>
             <ActivityIndicator color={colors.ochreDeep} />
@@ -127,6 +141,23 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 1.4, color: inkAlpha(0.52), marginTop: 5 },
   balance: { fontFamily: fonts.bodyExtra, fontSize: 18, color: colors.ochreDeep },
   content: { paddingHorizontal: 11, paddingTop: 12, paddingBottom: 14 },
+
+  bedtime: {
+    padding: 12,
+    marginBottom: 14,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(28,26,22,0.9)',
+    borderWidth: 1,
+    borderColor: colors.blockBorder,
+  },
+  bedtimeTitle: { fontFamily: fonts.bodyExtra, fontSize: 13, color: colors.ochre },
+  bedtimeBody: {
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: 'rgba(253,248,232,0.78)',
+    marginTop: 5,
+  },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
   tileWrap: { width: '33.33%', alignItems: 'center', gap: 5, paddingHorizontal: 2 },

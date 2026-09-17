@@ -5,36 +5,38 @@ import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from './PressableScale';
 import { colors, fonts, inkAlpha, radii } from '../theme';
-import { DAY_START_MIN, SLOT_MIN, formatSlot, slotChoices } from '../state/schedule';
+import { formatSlot } from '../state/schedule';
 
 const ROW_H = 44;
 
-/** Outlook-style slot list: every quarter hour between 7am and 7pm. */
+/** Outlook-style time list. The caller supplies the slots, so the same sheet
+ *  serves the day's calendar and the round-the-clock settings times. */
 export default function TimeSlotSheet({
   title,
   subtitle,
   value,
+  slots,
   onPick,
   onClose,
 }: {
   title: string;
   subtitle?: string;
   value: number;
+  slots: number[];
   onPick: (startMin: number) => void;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const slots = slotChoices();
 
-  // Open on the current slot rather than at 7am, three rows up so there is
+  // Open on the current value rather than at the top, three rows up so there is
   // context above it.
   useEffect(() => {
-    const index = Math.max(0, Math.round((value - DAY_START_MIN) / SLOT_MIN));
+    const index = Math.max(0, slots.indexOf(value));
     const y = Math.max(0, (index - 3) * ROW_H);
     const id = setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 30);
     return () => clearTimeout(id);
-  }, [value]);
+  }, [value, slots]);
 
   return (
     <View style={StyleSheet.absoluteFill}>

@@ -36,6 +36,8 @@ type BlockerNative = {
   unlockApp: (packageName: string) => void;
   grantUnlock: (packageName: string, minutes: number) => void;
   isBlockedNow: (packageName: string) => boolean;
+  setBedtime: (enabled: boolean, startMin: number, wakeMin: number) => void;
+  isBedtimeNow: () => boolean;
 };
 
 type MediaNative = {
@@ -72,6 +74,11 @@ export const unlockApp = (packageName: string) => blocker?.unlockApp(packageName
 export const grantUnlock = (packageName: string, minutes: number) =>
   blocker?.grantUnlock(packageName, minutes);
 export const isBlockedNow = (packageName: string) => blocker?.isBlockedNow(packageName) ?? false;
+
+/** Overnight relock: while it is on, locked apps ignore bought time entirely. */
+export const setBedtime = (enabled: boolean, startMin: number, wakeMin: number) =>
+  blocker?.setBedtime(enabled, startMin, wakeMin);
+export const isBedtimeNow = () => blocker?.isBedtimeNow() ?? false;
 
 export const isNotificationAccessGranted = () => media?.isNotificationAccessGranted() ?? false;
 export const openNotificationAccessSettings = () => media?.openNotificationAccessSettings();

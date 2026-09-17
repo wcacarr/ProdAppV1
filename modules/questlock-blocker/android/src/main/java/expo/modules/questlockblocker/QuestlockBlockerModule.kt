@@ -80,6 +80,16 @@ class QuestlockBlockerModule : Module() {
     Function("isBlockedNow") { packageName: String ->
       BlockStore.isBlockedNow(context, packageName)
     }
+
+    // Bedtime lives natively too: the service decides with no JS running, and
+    // the window has to hold across a reboot.
+    Function("setBedtime") { enabled: Boolean, startMin: Int, wakeMin: Int ->
+      BlockStore.setBedtime(context, enabled, startMin, wakeMin)
+    }
+
+    Function("isBedtimeNow") {
+      BlockStore.isBedtimeNow(context)
+    }
   }
 
   private fun accessibilityEnabled(): Boolean {

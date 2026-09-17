@@ -14,6 +14,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   runOnJS,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -22,9 +23,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
 import { DURATION_CHOICES, PRESETS } from '../state/data';
-import { DAY_START_MIN, SLOT_MIN, formatSlot, slotChoices } from '../state/schedule';
+import { SLOT_MIN, formatSlot, slotChoices } from '../state/schedule';
 
 const SLOT_CHIP_W = 84;
+const SETTLE = { duration: 190, easing: Easing.out(Easing.cubic) };
+/** How far down it has to travel before letting go throws it away. */
+const DISMISS_PX = 110;
 
 export default function AddQuestSheet() {
   const scrollRef = React.useRef<ScrollView>(null);
@@ -42,45 +46,79 @@ export default function AddQuestSheet() {
   const draftStartMin = useQuestStore((s) => s.draftStartMin);
   const setDraftStartMin = useQuestStore((s) => s.setDraftStartMin);
 
+  const dayWindow = useQuestStore((s) => s.dayWindow);
+
   const dragY = useSharedValue(0);
-  // The sheet can only be thrown away from the top of its own scroll, so
-  // dragging down mid-list still scrolls the list.
-  const [atTop, setAtTop] = React.useState(true);
+  // Read straight off the scroll in a worklet. Deciding this from React state
+  // was the reason the swipe only worked sometimes: the flag lagged a frame
+  // behind the finger, and never updated at all on a sheet short enough not to
+  // scroll.
+  const scrollY = useSharedValue(0);
+  const startY = useSharedValue(0);
+  const dismissing = useSharedValue(false);
+
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollY.value = e.contentOffset.y;
+    },
+  });
 
   const dismiss = React.useCallback(() => {
     Keyboard.dismiss();
     closeSheet();
   }, [closeSheet]);
 
-  // Drag the sheet down to throw it away; short drags spring back.
+  // Grabbable anywhere on the sheet. Activation is decided by hand so the
+  // gesture only takes the touch when it should: a downward drag at the top of
+  // the list moves the sheet, and anything else is handed straight back to the
+  // scroll view instead of being swallowed.
   const swipeDown = Gesture.Pan()
-    .enabled(atTop)
-    .activeOffsetY(12)
-    .failOffsetY(-14)
+    .manualActivation(true)
+    .onTouchesDown((e) => {
+      dismissing.value = false;
+      startY.value = e.changedTouches[0].absoluteY;
+    })
+    .onTouchesMove((e, manager) => {
+      const dy = e.changedTouches[0].absoluteY - startY.value;
+      if (scrollY.value > 1 || dy < -4) {
+        manager.fail();
+      } else if (dy > 10) {
+        manager.activate();
+      }
+    })
     .onUpdate((e) => {
       dragY.value = Math.max(0, e.translationY);
     })
     .onEnd((e) => {
-      if (e.translationY > 110 || e.velocityY > 900) {
+      if (e.translationY > DISMISS_PX || e.velocityY > 900) {
+        dismissing.value = true;
         runOnJS(dismiss)();
-      } else {
-        dragY.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
       }
+    })
+    .onFinalize(() => {
+      if (!dismissing.value) dragY.value = withTiming(0, SETTLE);
     });
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: dragY.value }],
   }));
 
-  // Open the slot strip on the chosen time rather than at 7am.
+  // The backdrop thins out as the sheet leaves, so the drag feels connected.
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - dragY.value / (DISMISS_PX * 2.4)),
+  }));
+
+  // Open the slot strip on the chosen time rather than at the start of the day.
   const onSlotStripLayout = () => {
-    const index = Math.max(0, Math.round((draftStartMin - DAY_START_MIN) / SLOT_MIN));
+    const index = Math.max(0, Math.round((draftStartMin - dayWindow.startMin) / SLOT_MIN));
     timeScrollRef.current?.scrollTo({ x: Math.max(0, (index - 1) * SLOT_CHIP_W), animated: false });
   };
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={dismiss} />
+      <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
+        <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={dismiss} />
+      </Animated.View>
       <KeyboardAvoidingView
         behavior="padding"
         style={styles.sheetOuter}
@@ -90,12 +128,12 @@ export default function AddQuestSheet() {
         <Animated.View style={[styles.sheetClip, { marginBottom: 8 + insets.bottom }, sheetStyle]}>
           <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassSheet }]} />
-          <ScrollView
+          <Animated.ScrollView
             ref={scrollRef}
             contentContainerStyle={styles.sheetContent}
             keyboardShouldPersistTaps="handled"
-            scrollEventThrottle={32}
-            onScroll={(e) => setAtTop(e.nativeEvent.contentOffset.y <= 2)}
+            scrollEventThrottle={16}
+            onScroll={onScroll}
           >
             <View style={styles.handle} />
             <Text style={styles.title}>Add a quest</Text>
@@ -151,7 +189,7 @@ export default function AddQuestSheet() {
               onLayout={onSlotStripLayout}
               contentContainerStyle={styles.slotStrip}
             >
-              {slotChoices().map((slot) => {
+              {slotChoices(dayWindow).map((slot) => {
                 const on = slot === draftStartMin;
                 return (
                   <Pressable
@@ -183,7 +221,7 @@ export default function AddQuestSheet() {
             <Pressable style={styles.addBtn} onPress={addCustom}>
               <Text style={styles.addBtnText}>Add to today</Text>
             </Pressable>
-          </ScrollView>
+          </Animated.ScrollView>
         </Animated.View>
         </GestureDetector>
       </KeyboardAvoidingView>
