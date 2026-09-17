@@ -16,6 +16,7 @@ import { useQuestStore } from '../state/store';
 import { DURATION_CHOICES, PRESETS } from '../state/data';
 
 export default function AddQuestSheet() {
+  const scrollRef = React.useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const closeSheet = useQuestStore((s) => s.closeSheet);
   const draftName = useQuestStore((s) => s.draftName);
@@ -31,14 +32,18 @@ export default function AddQuestSheet() {
     <View style={StyleSheet.absoluteFill}>
       <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={closeSheet} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         style={styles.sheetOuter}
         pointerEvents="box-none"
       >
         <View style={[styles.sheetClip, { marginBottom: 8 + insets.bottom }]}>
           <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassSheet }]} />
-          <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={styles.sheetContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.handle} />
             <Text style={styles.title}>Add a quest</Text>
             <Text style={styles.subtitle}>PICK ONE OR WRITE YOUR OWN</Text>
@@ -63,6 +68,7 @@ export default function AddQuestSheet() {
             <TextInput
               value={draftName}
               onChangeText={setDraftName}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
               placeholder="e.g. 20 minutes of guitar"
               placeholderTextColor={inkAlpha(0.4)}
               style={styles.input}

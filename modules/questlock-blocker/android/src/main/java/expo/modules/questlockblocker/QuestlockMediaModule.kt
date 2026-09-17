@@ -125,7 +125,8 @@ class QuestlockMediaModule : Module() {
         return null
       }
       val component = ComponentName(context, QuestlockNotificationListener::class.java)
-      val sessions = service.getActiveSessions(component)
+      val all = service.getActiveSessions(component)
+      val sessions = all.filter { it.packageName != context.packageName }
       if (sessions.isEmpty()) {
         return null
       }

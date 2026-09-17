@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native
 import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   SlideInDown,
@@ -10,8 +11,9 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, G, Polygon, Polyline, Rect } from 'react-native-svg';
 import PressableScale from './PressableScale';
 import { colors, fonts, inkAlpha, mmss, radii } from '../theme';
@@ -23,6 +25,7 @@ const PANEL_FRACTION = 0.68;
 
 export default function ExpandedPlayer() {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const close = useQuestStore((s) => s.setPlayerExpanded);
   const { now, liveProgressMs, togglePlay, next, previous, seekTo } = useNowPlaying(1000);
 
@@ -42,7 +45,7 @@ export default function ExpandedPlayer() {
       if (e.translationY > 90 || e.velocityY > 800) {
         runOnJS(close)(false);
       } else {
-        dragY.value = withSpring(0, { damping: 22, stiffness: 220 });
+        dragY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
       }
     });
 
@@ -76,9 +79,13 @@ export default function ExpandedPlayer() {
 
       <GestureDetector gesture={dismiss}>
         <Animated.View
-          entering={SlideInDown.springify().damping(24).stiffness(180)}
-          exiting={SlideOutDown.duration(220)}
-          style={[styles.panelWrap, { height: height * PANEL_FRACTION }, panelStyle]}
+          entering={SlideInDown.duration(260).easing(Easing.out(Easing.cubic))}
+          exiting={SlideOutDown.duration(200).easing(Easing.in(Easing.cubic))}
+          style={[
+            styles.panelWrap,
+            { height: height * PANEL_FRACTION, paddingBottom: insets.bottom },
+            panelStyle,
+          ]}
         >
           <View style={styles.panel}>
             <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />

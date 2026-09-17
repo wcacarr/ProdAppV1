@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="questlock_accessibility_label">Questlock app locking</string>
-  <string name="questlock_media_label">Questlock media controls</string>
-  <string name="questlock_accessibility_description">Questlock uses this to notice when a locked app opens and send you back home until you have earned time for it. It does not read screen content.</string>
+  <string name="questlock_accessibility_label">Tasuku app locking</string>
+  <string name="questlock_media_label">Tasuku media controls</string>
+  <string name="questlock_accessibility_description">Tasuku uses this to notice when a locked app opens and send you back home until you have earned time for it. It does not read screen content.</string>
 </resources>

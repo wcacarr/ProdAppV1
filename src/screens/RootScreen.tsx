@@ -7,7 +7,7 @@ import TopTabBar from '../components/TopTabBar';
 import PlayerDock from '../components/PlayerDock';
 import AddQuestSheet from '../components/AddQuestSheet';
 import PhotoProofPrompt from '../components/PhotoProofPrompt';
-import RippleTransition from '../components/RippleTransition';
+import ScreenTransition from '../components/ScreenTransition';
 import ExpandedPlayer from '../components/ExpandedPlayer';
 import Toast from '../components/Toast';
 import TodayScreen from './TodayScreen';
@@ -48,9 +48,9 @@ export default function RootScreen() {
           <Animated.View
             key={screen}
             style={styles.pane}
-            entering={FadeIn.duration(260)}
             layout={reflow}
           >
+            <ScreenTransition trigger={screen}>
             {screen === 'today' && <TodayScreen />}
             {screen === 'store' && <StoreScreen />}
             {screen === 'apps' && <AppsScreen />}
@@ -59,7 +59,7 @@ export default function RootScreen() {
             {screen === 'block' && <BlockScreen />}
             {screen === 'lock' && <LockSetupScreen />}
             {screen === 'settings' && <SettingsScreen />}
-            <RippleTransition trigger={screen} />
+            </ScreenTransition>
           </Animated.View>
 
           <Animated.View layout={reflow}>

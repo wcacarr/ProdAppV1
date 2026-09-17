@@ -12,6 +12,7 @@ import {
   isBlockingSupported,
   isNotificationAccessGranted,
   openAccessibilitySettings,
+  openAppInfo,
   openNotificationAccessSettings,
 } from '../../modules/questlock-blocker';
 
@@ -102,6 +103,8 @@ function PermissionsStep({ onNext }: { onNext: () => void }) {
         name="App locking"
         why="Lets Tasuku notice when a locked app opens and send you home."
         onPress={openAccessibilitySettings}
+        escapeHatch={{ label: 'Greyed out?', onPress: openAppInfo }}
+        escapeHint="Android blocks this for apps installed outside the Play Store. Open App info → ⋮ (top right) → Allow restricted settings, then come back."
       />
       <PermissionRow
         granted={notifications}
@@ -133,25 +136,48 @@ function PermissionRow({
   name,
   why,
   onPress,
+  escapeHatch,
+  escapeHint,
 }: {
   granted: boolean;
   name: string;
   why: string;
   onPress: () => void;
+  /** Secondary route for when Android won't let the main one through. */
+  escapeHatch?: { label: string; onPress: () => void };
+  escapeHint?: string;
 }) {
+  const [showHint, setShowHint] = useState(false);
+
   return (
     <View style={styles.permRow}>
-      <View style={[styles.tick, granted && styles.tickOn]}>
-        {granted && <Text style={styles.tickMark}>{'✓'}</Text>}
+      <View style={styles.permRowTop}>
+        <View style={[styles.tick, granted && styles.tickOn]}>
+          {granted && <Text style={styles.tickMark}>{'✓'}</Text>}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.permName}>{name}</Text>
+          <Text style={styles.permWhy}>{why}</Text>
+        </View>
+        {!granted && (
+          <PressableScale style={styles.allowBtn} onPress={onPress}>
+            <Text style={styles.allowText}>Allow</Text>
+          </PressableScale>
+        )}
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.permName}>{name}</Text>
-        <Text style={styles.permWhy}>{why}</Text>
-      </View>
-      {!granted && (
-        <PressableScale style={styles.allowBtn} onPress={onPress}>
-          <Text style={styles.allowText}>Allow</Text>
+
+      {!granted && escapeHatch && (
+        <PressableScale style={styles.escape} onPress={() => setShowHint((v) => !v)} scaleTo={0.98}>
+          <Text style={styles.escapeText}>{escapeHatch.label}</Text>
         </PressableScale>
+      )}
+      {!granted && escapeHatch && showHint && (
+        <Animated.View entering={FadeIn.duration(180)} style={styles.escapePanel}>
+          <Text style={styles.escapeHint}>{escapeHint}</Text>
+          <PressableScale style={styles.escapeBtn} onPress={escapeHatch.onPress}>
+            <Text style={styles.escapeBtnText}>Open App info</Text>
+          </PressableScale>
+        </Animated.View>
       )}
     </View>
   );
@@ -219,9 +245,6 @@ const styles = StyleSheet.create({
   bodyDim: { fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: inkAlpha(0.55), marginBottom: 6 },
 
   permRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
     marginTop: 10,
     padding: 11,
     borderRadius: radii.md,
@@ -229,6 +252,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
   },
+  permRowTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  escape: { paddingTop: 9, paddingBottom: 2 },
+  escapeText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11.5,
+    color: colors.ochreDeep,
+    textDecorationLine: 'underline',
+  },
+  escapePanel: {
+    marginTop: 8,
+    padding: 11,
+    borderRadius: radii.sm,
+    backgroundColor: colors.glassNudge,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.12),
+  },
+  escapeHint: { fontFamily: fonts.body, fontSize: 11.5, lineHeight: 17, color: inkAlpha(0.68) },
+  escapeBtn: {
+    marginTop: 10,
+    paddingVertical: 9,
+    borderRadius: 999,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,252,242,.85)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.18),
+  },
+  escapeBtnText: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.ink },
   tick: {
     width: 22,
     height: 22,

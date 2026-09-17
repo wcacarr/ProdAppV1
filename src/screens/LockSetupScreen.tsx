@@ -11,6 +11,7 @@ import {
   isNotificationAccessGranted,
   lockApp,
   openAccessibilitySettings,
+  openAppInfo,
   openNotificationAccessSettings,
   unlockApp,
 } from '../../modules/questlock-blocker';
@@ -83,9 +84,14 @@ export default function LockSetupScreen() {
             body={
               enforcementOn
                 ? 'Opening a locked app sends you home.'
-                : 'Questlock needs accessibility access to notice which app opened.'
+                : 'Tasuku needs accessibility access to notice which app opened.'
             }
             onPress={openAccessibilitySettings}
+            escapeLabel="Greyed out in settings?"
+            escapeHint={
+              "Android greys this out for apps installed outside the Play Store. Open App info → ⋮ (top right) → Allow restricted settings, then try again."
+            }
+            onEscape={openAppInfo}
           />
           <PermissionRow
             on={mediaOn}
@@ -127,22 +133,47 @@ function PermissionRow({
   title,
   body,
   onPress,
+  escapeLabel,
+  escapeHint,
+  onEscape,
 }: {
   on: boolean;
   title: string;
   body: string;
   onPress: () => void;
+  /** Secondary route for when Android won't let the main one through. */
+  escapeLabel?: string;
+  escapeHint?: string;
+  onEscape?: () => void;
 }) {
+  const [showHint, setShowHint] = useState(false);
+
   return (
     <View style={styles.permRow}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.permTitle}>{title}</Text>
-        <Text style={styles.permBody}>{body}</Text>
+      <View style={styles.permRowTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.permTitle}>{title}</Text>
+          <Text style={styles.permBody}>{body}</Text>
+        </View>
+        {!on && (
+          <Pressable style={styles.permBtn} onPress={onPress}>
+            <Text style={styles.permBtnText}>Turn on</Text>
+          </Pressable>
+        )}
       </View>
-      {!on && (
-        <Pressable style={styles.permBtn} onPress={onPress}>
-          <Text style={styles.permBtnText}>Turn on</Text>
+
+      {!on && onEscape && (
+        <Pressable style={styles.escape} onPress={() => setShowHint((v) => !v)}>
+          <Text style={styles.escapeText}>{escapeLabel}</Text>
         </Pressable>
+      )}
+      {!on && onEscape && showHint && (
+        <View style={styles.escapePanel}>
+          <Text style={styles.escapeHint}>{escapeHint}</Text>
+          <Pressable style={styles.escapeBtn} onPress={onEscape}>
+            <Text style={styles.escapeBtnText}>Open App info</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -194,15 +225,39 @@ const styles = StyleSheet.create({
   mono: { fontFamily: fonts.mono, fontSize: 12, color: colors.ink },
   content: { padding: 13, gap: 8 },
   permRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
     padding: 12,
     borderRadius: radii.md,
     backgroundColor: colors.glassNudge,
     borderWidth: 1,
     borderColor: inkAlpha(0.12),
   },
+  permRowTop: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  escape: { paddingTop: 9, paddingBottom: 2 },
+  escapeText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11.5,
+    color: colors.ochreDeep,
+    textDecorationLine: 'underline',
+  },
+  escapePanel: {
+    marginTop: 8,
+    padding: 11,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255,252,242,.7)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.12),
+  },
+  escapeHint: { fontFamily: fonts.body, fontSize: 11.5, lineHeight: 17, color: inkAlpha(0.68) },
+  escapeBtn: {
+    marginTop: 10,
+    paddingVertical: 9,
+    borderRadius: 999,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,252,242,.9)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.18),
+  },
+  escapeBtnText: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.ink },
   permTitle: { fontFamily: fonts.bodyExtra, fontSize: 12.5, color: colors.ink },
   permBody: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, color: inkAlpha(0.68), marginTop: 4 },
   permBtn: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: 999, backgroundColor: colors.ochre },

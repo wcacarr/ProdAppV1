@@ -28,6 +28,7 @@ export type DeviceNowPlaying = {
 type BlockerNative = {
   isAccessibilityServiceEnabled: () => boolean;
   openAccessibilitySettings: () => void;
+  openAppInfo: () => void;
   getInstalledApps: () => Promise<InstalledApp[]>;
   launchApp: (packageName: string) => boolean;
   getLockStates: () => LockState[];
@@ -60,6 +61,8 @@ export const LOCK_GRACE_MS = 60_000;
 
 export const isAccessibilityServiceEnabled = () => blocker?.isAccessibilityServiceEnabled() ?? false;
 export const openAccessibilitySettings = () => blocker?.openAccessibilitySettings();
+/** App info page — where a sideloaded build has to clear "restricted settings" first. */
+export const openAppInfo = () => blocker?.openAppInfo();
 export const getInstalledApps = async (): Promise<InstalledApp[]> =>
   (await blocker?.getInstalledApps()) ?? [];
 export const launchApp = (packageName: string) => blocker?.launchApp(packageName) ?? false;

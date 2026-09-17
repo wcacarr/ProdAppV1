@@ -3,6 +3,8 @@ package expo.modules.questlockblocker
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
 import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -26,8 +28,27 @@ class QuestlockBlockerModule : Module() {
       accessibilityEnabled()
     }
 
+    // Jumps straight to Tasuku's own entry where the platform honours it,
+    // instead of dumping the user in the Accessibility list to go hunting.
     Function("openAccessibilitySettings") {
+      val component = ComponentName(context, QuestlockAccessibilityService::class.java)
+      val flattened = component.flattenToString()
       val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      val args = Bundle()
+      args.putString(":settings:fragment_args_key", flattened)
+      intent.putExtra(":settings:fragment_args_key", flattened)
+      intent.putExtra(":settings:show_fragment_args", args)
+      context.startActivity(intent)
+    }
+
+    // App info page — where sideloaded builds have to clear "restricted
+    // settings" before accessibility can be turned on at all.
+    Function("openAppInfo") {
+      val intent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", context.packageName, null)
+      )
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       context.startActivity(intent)
     }
