@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NatureBackground from '../components/NatureBackground';
 import TopTabBar from '../components/TopTabBar';
 import PlayerDock from '../components/PlayerDock';
 import AddQuestSheet from '../components/AddQuestSheet';
 import PhotoProofPrompt from '../components/PhotoProofPrompt';
+import RippleTransition from '../components/RippleTransition';
 import ExpandedPlayer from '../components/ExpandedPlayer';
 import Toast from '../components/Toast';
 import TodayScreen from './TodayScreen';
@@ -45,7 +46,7 @@ export default function RootScreen() {
           <Animated.View
             key={screen}
             style={styles.pane}
-            entering={FadeInDown.duration(240).springify().damping(22)}
+            entering={FadeIn.duration(260)}
             layout={reflow}
           >
             {screen === 'today' && <TodayScreen />}
@@ -55,6 +56,7 @@ export default function RootScreen() {
             {screen === 'reward' && <RewardScreen />}
             {screen === 'block' && <BlockScreen />}
             {screen === 'lock' && <LockSetupScreen />}
+            <RippleTransition trigger={screen} />
           </Animated.View>
 
           <Animated.View layout={reflow}>

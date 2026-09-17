@@ -4,7 +4,7 @@ import { createAudioPlayer } from 'expo-audio';
 import { MediaStatus } from './useNowPlaying';
 import { safePlay } from '../sound/safePlay';
 
-const VOLUME = 0.18;
+const VOLUME = 0.22;
 
 type Player = ReturnType<typeof createAudioPlayer>;
 
@@ -19,7 +19,7 @@ export function useAmbientBed(mediaStatus: MediaStatus, enabled = true) {
 
   useEffect(() => {
     try {
-      const player = createAudioPlayer(require('../../assets/sounds/ambient.wav'));
+      const player = createAudioPlayer(require('../../assets/sounds/ambient.mp3'));
       player.loop = true;
       player.volume = VOLUME;
       playerRef.current = player;

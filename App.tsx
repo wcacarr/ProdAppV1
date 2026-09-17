@@ -15,6 +15,8 @@ import {
 import { useFonts as useMonoFonts, IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
 import { useFonts as useBrandFonts, ShipporiMincho_600SemiBold } from '@expo-google-fonts/shippori-mincho';
 import SplashSequence from './src/screens/SplashSequence';
+import Onboarding from './src/screens/Onboarding';
+import { useFirstRun } from './src/state/firstRun';
 import RootScreen from './src/screens/RootScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -30,6 +32,7 @@ export default function App() {
   const [monoLoaded] = useMonoFonts({ IBMPlexMono_400Regular, IBMPlexMono_500Medium });
   const [brandLoaded] = useBrandFonts({ ShipporiMincho_600SemiBold });
   const [introDone, setIntroDone] = useState(false);
+  const { checked, needsOnboarding, complete } = useFirstRun();
 
   const onLayout = useCallback(async () => {
     if (nunitoLoaded && monoLoaded && brandLoaded) await SplashScreen.hideAsync();
@@ -42,6 +45,7 @@ export default function App() {
       <SafeAreaProvider>
         <View style={{ flex: 1 }} onLayout={onLayout}>
           <RootScreen />
+          {introDone && checked && needsOnboarding && <Onboarding onDone={complete} />}
           {!introDone && <SplashSequence onDone={() => setIntroDone(true)} />}
           <StatusBar style="dark" />
         </View>
