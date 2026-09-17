@@ -11,3 +11,10 @@ export function questMeta(q: Quest) {
   const base = `${q.mins} MIN · +${xpFor(q.mins)} XP`;
   return q.needsPhoto ? `${base} · PHOTO` : base;
 }
+
+/** Same thing minus the duration, for rows that already show a time slot. */
+export function questReward(q: Quest) {
+  if (q.done) return `DONE · +${xpFor(q.mins)} XP`;
+  const base = `+${xpFor(q.mins)} XP`;
+  return q.needsPhoto ? `${base} · PHOTO` : base;
+}

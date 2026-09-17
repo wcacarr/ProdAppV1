@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { AppState, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import NatureBackground from '../components/NatureBackground';
@@ -9,6 +9,7 @@ import AddQuestSheet from '../components/AddQuestSheet';
 import PhotoProofPrompt from '../components/PhotoProofPrompt';
 import ScreenTransition from '../components/ScreenTransition';
 import ExpandedPlayer from '../components/ExpandedPlayer';
+import RunningQuestPill from '../components/RunningQuestPill';
 import Toast from '../components/Toast';
 import TodayScreen from './TodayScreen';
 import StoreScreen from './StoreScreen';
@@ -40,6 +41,17 @@ export default function RootScreen() {
   const musicEnabled = useQuestStore((s) => s.musicEnabled);
   useAmbientBed(!!now?.isPlaying, musicEnabled);
 
+  // Android freezes JS timers in the background, so a quest interrupted by a
+  // call or a text would otherwise come back with its countdown stopped where
+  // it was. The clock is the source of truth; catch up to it on resume.
+  const syncFocus = useQuestStore((s) => s.syncFocus);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') syncFocus();
+    });
+    return () => sub.remove();
+  }, [syncFocus]);
+
   return (
     <View style={styles.root}>
       <NatureBackground />
@@ -60,6 +72,10 @@ export default function RootScreen() {
             {screen === 'lock' && <LockSetupScreen />}
             {screen === 'settings' && <SettingsScreen />}
             </ScreenTransition>
+          </Animated.View>
+
+          <Animated.View layout={reflow}>
+            <RunningQuestPill />
           </Animated.View>
 
           <Animated.View layout={reflow}>

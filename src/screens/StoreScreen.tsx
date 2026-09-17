@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
 import { colors, fonts, inkAlpha, radii } from '../theme';
@@ -12,7 +12,7 @@ export default function StoreScreen() {
   const balance = useQuestStore((s) => s.balance);
   const buy = useQuestStore((s) => s.buy);
   const setScreen = useQuestStore((s) => s.setScreen);
-  const { lockedApps } = useAppRegistry();
+  const { lockedApps, loading } = useAppRegistry();
 
   const tiles = useMemo(
     () =>
@@ -48,7 +48,12 @@ export default function StoreScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {tiles.length === 0 ? (
+        {tiles.length === 0 && loading ? (
+          <View style={styles.emptyWrap}>
+            <ActivityIndicator color={colors.ochreDeep} />
+            <Text style={styles.emptyBody}>Reading your locked apps…</Text>
+          </View>
+        ) : tiles.length === 0 ? (
           <PressableScale style={styles.emptyWrap} onPress={() => setScreen('lock')}>
             <Text style={styles.emptyTitle}>Nothing to buy yet</Text>
             <Text style={styles.emptyBody}>

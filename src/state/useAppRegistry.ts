@@ -16,26 +16,60 @@ export type AppEntry = InstalledApp & {
   unlockedUntil: number;
 };
 
-// Installed apps are expensive to load (icons), so they're fetched once;
-// lock state is cheap and ticks every second so countdowns stay live.
+// Loading the installed apps means decoding every launcher icon, which takes
+// long enough that a screen mounting mid-fetch would render as if nothing were
+// installed — which is how the Store came up empty right after a quest. The
+// list is therefore fetched once for the whole app and shared, so later screens
+// mount with it already in hand.
+let cache: InstalledApp[] = [];
+let inFlight: Promise<InstalledApp[]> | null = null;
+let loadedAt = 0;
+const subscribers = new Set<(apps: InstalledApp[]) => void>();
+
+/** How stale the cached list may get before a foregrounding refreshes it, so
+ *  apps installed while we were away still turn up. */
+const STALE_MS = 60_000;
+
+function loadApps(force = false): Promise<InstalledApp[]> {
+  if (!force && loadedAt) return Promise.resolve(cache);
+  if (!inFlight) {
+    inFlight = getInstalledApps()
+      .then((list) => {
+        cache = list;
+        loadedAt = Date.now();
+        subscribers.forEach((fn) => fn(list));
+        return list;
+      })
+      .catch(() => {
+        loadedAt = Date.now();
+        return cache;
+      })
+      .finally(() => {
+        inFlight = null;
+      });
+  }
+  return inFlight;
+}
+
 export function useAppRegistry() {
-  const [apps, setApps] = useState<InstalledApp[]>([]);
-  const [locks, setLocks] = useState<LockState[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [apps, setApps] = useState<InstalledApp[]>(cache);
+  const [locks, setLocks] = useState<LockState[]>(getLockStates);
+  const [loading, setLoading] = useState(loadedAt === 0);
 
   const refreshLocks = useCallback(() => setLocks(getLockStates()), []);
 
   useEffect(() => {
     let cancelled = false;
-    getInstalledApps()
-      .then((list) => {
-        if (cancelled) return;
-        setApps(list);
-        setLoading(false);
-      })
-      .catch(() => !cancelled && setLoading(false));
+    const receive = (list: InstalledApp[]) => {
+      if (cancelled) return;
+      setApps(list);
+      setLoading(false);
+    };
+    subscribers.add(receive);
+    loadApps().then(receive);
     return () => {
       cancelled = true;
+      subscribers.delete(receive);
     };
   }, []);
 
@@ -43,7 +77,9 @@ export function useAppRegistry() {
     refreshLocks();
     const interval = setInterval(refreshLocks, 1000);
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') refreshLocks();
+      if (s !== 'active') return;
+      refreshLocks();
+      if (Date.now() - loadedAt > STALE_MS) loadApps(true);
     });
     return () => {
       clearInterval(interval);

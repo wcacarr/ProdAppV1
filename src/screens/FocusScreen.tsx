@@ -75,7 +75,8 @@ export default function FocusScreen() {
       </View>
 
       <Text style={styles.hint}>
-        Locked apps stay shut until the timer lands. The music keeps going if you leave this pane.
+        Locked apps stay shut until the timer lands. The clock keeps running if you leave the app —
+        take the call, the quest will still be here.
       </Text>
 
       <View style={styles.actions}>

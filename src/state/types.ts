@@ -9,6 +9,8 @@ export type Quest = {
   /** Finishing requires a photo of the completed task. */
   needsPhoto: boolean;
   photoUri?: string;
+  /** Start of its calendar slot, in minutes from midnight (420 = 7:00 AM). */
+  startMin: number;
 };
 
 export type Offer = {

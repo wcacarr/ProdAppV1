@@ -1,8 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  FadeOut,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -11,12 +9,20 @@ import Animated, {
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
 import SwipeToDelete from '../components/SwipeToDelete';
+import DraggableList from '../components/DraggableList';
+import TimeSlotSheet from '../components/TimeSlotSheet';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
-import { fastestRemaining, questMeta } from '../state/selectors';
+import { fastestRemaining, questReward } from '../state/selectors';
 import { rankFor } from '../state/ranks';
 import { useAppRegistry } from '../state/useAppRegistry';
 import { Quest } from '../state/types';
+import { bookedMinutes, formatSlot, formatSlotShort, overlaps, sortedByStart } from '../state/schedule';
+
+// Rows have to be a uniform height for the drag maths to work.
+const ROW_CONTENT_H = 56;
+const ROW_GAP = 7;
+const ROW_H = ROW_CONTENT_H + ROW_GAP;
 
 export default function TodayScreen() {
   const quests = useQuestStore((s) => s.quests);
@@ -26,6 +32,11 @@ export default function TodayScreen() {
   const startQuest = useQuestStore((s) => s.startQuest);
   const openSheet = useQuestStore((s) => s.openSheet);
   const deleteQuest = useQuestStore((s) => s.deleteQuest);
+  const reorderQuests = useQuestStore((s) => s.reorderQuests);
+  const editingTimeId = useQuestStore((s) => s.editingTimeId);
+  const openTimeEditor = useQuestStore((s) => s.openTimeEditor);
+  const closeTimeEditor = useQuestStore((s) => s.closeTimeEditor);
+  const setQuestStart = useQuestStore((s) => s.setQuestStart);
   const flash = useQuestStore((s) => s.flash);
 
   // Easter egg: tap the XP box and the whole thing rolls over.
@@ -49,9 +60,12 @@ export default function TodayScreen() {
   const rank = rankFor(lifetime);
   const { lockedApps } = useAppRegistry();
   const lockedLabel = lockedApps[0]?.label ?? null;
+  const schedule = useMemo(() => sortedByStart(quests), [quests]);
   const remaining = quests.filter((q) => !q.done);
   const fastest = fastestRemaining(quests);
   const doneCount = quests.filter((q) => q.done).length;
+  const booked = bookedMinutes(quests);
+  const editing = quests.find((q) => q.id === editingTimeId) ?? null;
 
   return (
     <>
@@ -91,23 +105,36 @@ export default function TodayScreen() {
         contentStyle={{ flex: 1, minHeight: 0 }}
       >
         <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Today's quests</Text>
-          <Text style={styles.listCount}>
-            {doneCount}/{quests.length} DONE
+          <View style={styles.listHeaderRow}>
+            <Text style={styles.listTitle}>Today's quests</Text>
+            <Text style={styles.listCount}>
+              {doneCount}/{quests.length} DONE
+            </Text>
+          </View>
+          <Text style={styles.listSubtitle}>
+            7AM – 7PM · {formatDuration(booked)} BOOKED
+            {quests.length > 1 ? ' · HOLD TO MOVE' : ''}
           </Text>
         </View>
         <ScrollView contentContainerStyle={styles.listContent}>
-          {quests.map((q) => (
-            <Animated.View key={q.id} layout={LinearTransition.springify().damping(20)} exiting={FadeOut.duration(140)}>
+          <DraggableList
+            data={schedule}
+            rowHeight={ROW_H}
+            keyExtractor={(q) => q.id}
+            onReorder={reorderQuests}
+            onLiftStart={() => flash('Drag to move it through the day.')}
+            renderItem={(q) => (
               <SwipeToDelete onDelete={() => deleteQuest(q.id)}>
                 <QuestRow
                   quest={q}
+                  clashes={overlaps(q, quests)}
                   onStart={() => startQuest(q.id)}
+                  onEditTime={() => openTimeEditor(q.id)}
                   onClaimed={() => flash('Already claimed today.')}
                 />
               </SwipeToDelete>
-            </Animated.View>
-          ))}
+            )}
+          />
 
           <PressableScale style={styles.addQuest} onPress={openSheet}>
             <Text style={styles.addQuestText}>+ Add a quest</Text>
@@ -127,19 +154,48 @@ export default function TodayScreen() {
           </View>
         </ScrollView>
       </GlassPane>
+
+      {editing && (
+        <TimeSlotSheet
+          title={editing.name}
+          subtitle={`${editing.mins} MIN · CURRENTLY ${formatSlot(editing.startMin).toUpperCase()}`}
+          value={editing.startMin}
+          onPick={(startMin) => setQuestStart(editing.id, startMin)}
+          onClose={closeTimeEditor}
+        />
+      )}
     </>
   );
 }
 
-function QuestRow({ quest, onStart, onClaimed }: { quest: Quest; onStart: () => void; onClaimed: () => void }) {
+function QuestRow({
+  quest,
+  clashes,
+  onStart,
+  onEditTime,
+  onClaimed,
+}: {
+  quest: Quest;
+  clashes: boolean;
+  onStart: () => void;
+  onEditTime: () => void;
+  onClaimed: () => void;
+}) {
   const done = quest.done;
   return (
     <View style={styles.questRow}>
-      <View style={[styles.chip, { backgroundColor: done ? inkAlpha(0.06) : 'rgba(246,239,216,.8)' }]}>
-        <Text style={styles.chipGlyph}>{quest.glyph}</Text>
-      </View>
+      <Pressable style={styles.timeCol} onPress={onEditTime} hitSlop={6}>
+        <Text style={[styles.timeText, done && { color: inkAlpha(0.35) }]}>
+          {formatSlotShort(quest.startMin)}
+        </Text>
+        <Text style={styles.timeMins}>{quest.mins}m</Text>
+      </Pressable>
+
+      <View style={styles.timeRule} />
+
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
+          numberOfLines={1}
           style={[
             styles.questName,
             { color: done ? inkAlpha(0.42) : colors.ink, textDecorationLine: done ? 'line-through' : 'none' },
@@ -147,8 +203,11 @@ function QuestRow({ quest, onStart, onClaimed }: { quest: Quest; onStart: () => 
         >
           {quest.name}
         </Text>
-        <Text style={styles.questMeta}>{questMeta(quest)}</Text>
+        <Text style={[styles.questMeta, clashes && !done && { color: colors.ochreDeep }]} numberOfLines={1}>
+          {clashes && !done ? `OVERLAPS · ${questReward(quest)}` : questReward(quest)}
+        </Text>
       </View>
+
       <PressableScale
         onPress={done ? onClaimed : onStart}
         style={[
@@ -167,6 +226,13 @@ function QuestRow({ quest, onStart, onClaimed }: { quest: Quest; onStart: () => 
   );
 }
 
+function formatDuration(mins: number) {
+  if (mins < 60) return `${mins}M`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}H ${m}M` : `${h}H`;
+}
+
 const styles = StyleSheet.create({
   summaryPad: { paddingTop: 11, paddingHorizontal: 13, paddingBottom: 10 },
   summaryRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
@@ -179,46 +245,41 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 999, backgroundColor: colors.ochre },
 
   listHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 13,
     paddingTop: 10,
     paddingBottom: 9,
     borderBottomWidth: 1,
     borderBottomColor: inkAlpha(0.12),
   },
+  listHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listTitle: { fontFamily: fonts.bodyExtra, fontSize: 14, color: colors.ink },
   listCount: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.52) },
-  listContent: { padding: 11, paddingTop: 10, gap: 7 },
+  listSubtitle: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 1.3, color: inkAlpha(0.45), marginTop: 5 },
+  listContent: { padding: 11, paddingTop: 10 },
 
   questRow: {
+    height: ROW_CONTENT_H,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 9,
-    paddingHorizontal: 11,
+    paddingRight: 11,
+    paddingLeft: 8,
     borderRadius: radii.md,
     backgroundColor: colors.glassCard,
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
   },
-  chip: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: inkAlpha(0.18),
-  },
-  chipGlyph: { fontFamily: fonts.mono, fontSize: 12, color: colors.ink },
+  timeCol: { width: 46, alignItems: 'center' },
+  timeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },
+  timeMins: { fontFamily: fonts.mono, fontSize: 9, color: inkAlpha(0.45), marginTop: 2 },
+  timeRule: { width: 1, alignSelf: 'stretch', marginVertical: 10, backgroundColor: inkAlpha(0.12) },
   questName: { fontFamily: fonts.bodyBold, fontSize: 13 },
   questMeta: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.52), marginTop: 3 },
   questBtn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1 },
   questBtnText: { fontFamily: fonts.bodyBold, fontSize: 11.5 },
 
   addQuest: {
+    marginTop: 4,
     padding: 10,
     borderRadius: radii.md,
     borderWidth: 1,
@@ -229,7 +290,7 @@ const styles = StyleSheet.create({
   addQuestText: { fontFamily: fonts.bodyBold, fontSize: 12, color: inkAlpha(0.6) },
 
   nudge: {
-    marginTop: 4,
+    marginTop: 11,
     padding: 10,
     paddingHorizontal: 12,
     borderRadius: radii.md,
