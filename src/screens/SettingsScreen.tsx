@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Application from 'expo-application';
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
 import TimeSlotSheet from '../components/TimeSlotSheet';
@@ -190,6 +191,15 @@ export default function SettingsScreen() {
             ? 'This cannot be undone. Tap anywhere else to cancel.'
             : 'Deletes XP, rank, quests, settings and every photo file, and unlocks every locked app.'}
         </Text>
+        {/* Which build is this? Otherwise the only way to tell a stale install
+            from a fresh one is to go hunting for a changed string. */}
+        {!!Application.nativeApplicationVersion && (
+          <Text style={styles.version}>
+            TASUKU {Application.nativeApplicationVersion} · BUILD{' '}
+            {Application.nativeBuildVersion ?? '?'}
+          </Text>
+        )}
+
       </ScrollView>
 
       {editing && (
@@ -422,6 +432,14 @@ const styles = StyleSheet.create({
   eraseBtnArmed: { borderColor: 'rgba(150,54,38,0.6)', backgroundColor: 'rgba(150,54,38,0.1)' },
   eraseText: { fontFamily: fonts.bodySemi, fontSize: 13, color: inkAlpha(0.55) },
   eraseTextArmed: { fontFamily: fonts.bodyBold, color: '#963626' },
+  version: {
+    fontFamily: fonts.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.2,
+    color: inkAlpha(0.38),
+    textAlign: 'center',
+    marginTop: 22,
+  },
   eraseHint: {
     fontFamily: fonts.body,
     fontSize: 11,
