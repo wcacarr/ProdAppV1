@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from './PressableScale';
@@ -19,6 +20,7 @@ import { useQuestStore } from '../state/store';
 import { DURATION_CHOICES } from '../state/data';
 import { formatSlot, slotChoices } from '../state/schedule';
 import { Quest } from '../state/types';
+import { useSheetDismiss } from './useSheetDismiss';
 
 const SLOT_CHIP_W = 84;
 
@@ -44,10 +46,12 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
     slotScrollRef.current?.scrollTo({ x: Math.max(0, (index - 1) * SLOT_CHIP_W), animated: false });
   };
 
-  const dismiss = () => {
+  const dismiss = React.useCallback(() => {
     Keyboard.dismiss();
     close();
-  };
+  }, [close]);
+
+  const { gesture, sheetStyle, backdropStyle, onScroll } = useSheetDismiss(dismiss);
 
   const save = () => {
     const trimmed = name.trim();
@@ -64,7 +68,11 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={StyleSheet.absoluteFill}>
+      <Animated.View
+        entering={FadeIn.duration(180)}
+        exiting={FadeOut.duration(140)}
+        style={[StyleSheet.absoluteFill, backdropStyle]}
+      >
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={dismiss} />
       </Animated.View>
 
@@ -75,15 +83,21 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
         style={styles.outer}
         pointerEvents="box-none"
       >
+        <GestureDetector gesture={gesture}>
         <Animated.View
           entering={SlideInDown.duration(240).easing(Easing.out(Easing.cubic))}
           exiting={SlideOutDown.duration(180).easing(Easing.in(Easing.cubic))}
-          style={[styles.sheet, { marginBottom: 8 + insets.bottom }]}
+          style={[styles.sheet, { marginBottom: 8 + insets.bottom }, sheetStyle]}
         >
           <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassSheet }]} />
 
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Animated.ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={16}
+            onScroll={onScroll}
+          >
             <View style={styles.handle} />
             <Text style={styles.title}>Edit quest</Text>
 
@@ -177,8 +191,9 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
                 {confirmDelete ? 'Tap again to delete' : 'Delete quest'}
               </Text>
             </PressableScale>
-          </ScrollView>
+          </Animated.ScrollView>
         </Animated.View>
+        </GestureDetector>
       </KeyboardAvoidingView>
     </View>
   );

@@ -1,20 +1,28 @@
 import { Preset, Quest } from './types';
 
+/** What a brand new day looks like: the morning, in the order it happens. */
 export const INITIAL_QUESTS: Quest[] = [
-  { id: 1, name: 'Dishes', mins: 10, glyph: 'D', done: false, needsPhoto: true, startMin: 7 * 60, repeat: true },
-  { id: 2, name: 'Walk outside', mins: 20, glyph: 'W', done: false, needsPhoto: false, startMin: 8 * 60, repeat: true },
-  { id: 3, name: 'Study — deep work block', mins: 40, glyph: 'S', done: false, needsPhoto: false, startMin: 9 * 60, repeat: true },
+  { id: 1, name: 'Make the bed', mins: 5, glyph: 'M', done: false, needsPhoto: true, startMin: 7 * 60, repeat: true },
+  { id: 2, name: 'Breakfast', mins: 25, glyph: 'B', done: false, needsPhoto: false, startMin: 7 * 60 + 30, repeat: true },
+  { id: 3, name: 'Work block', mins: 60, glyph: 'W', done: false, needsPhoto: false, startMin: 9 * 60, repeat: true },
 ];
 
+/** Roughly in the order a day runs, so the list reads like a morning. */
 export const PRESETS: Preset[] = [
-  { name: 'Make the bed', mins: 5, glyph: 'B', needsPhoto: true },
-  { name: 'Dishes', mins: 10, glyph: 'D', needsPhoto: true },
-  { name: 'Walk outside', mins: 20, glyph: 'W', needsPhoto: false },
-  { name: 'Tidy one surface', mins: 10, glyph: 'T', needsPhoto: true },
+  { name: 'Make the bed', mins: 5, glyph: 'M', needsPhoto: true },
+  { name: 'Breakfast', mins: 25, glyph: 'B', needsPhoto: false },
   { name: 'Shower', mins: 15, glyph: 'S', needsPhoto: false },
+  { name: 'Meditate', mins: 10, glyph: 'M', needsPhoto: false },
+  { name: 'Check in With God', mins: 15, glyph: 'G', needsPhoto: false },
+  { name: 'Work block', mins: 60, glyph: 'W', needsPhoto: false },
+  { name: 'Homework', mins: 40, glyph: 'H', needsPhoto: false },
+  { name: 'Study', mins: 40, glyph: 'S', needsPhoto: false },
+  { name: 'Workout', mins: 40, glyph: 'X', needsPhoto: false },
+  { name: 'Walk outside', mins: 20, glyph: 'W', needsPhoto: false },
   { name: 'Read', mins: 25, glyph: 'R', needsPhoto: false },
+  { name: 'Dishes', mins: 10, glyph: 'D', needsPhoto: true },
+  { name: 'Tidy one surface', mins: 10, glyph: 'T', needsPhoto: true },
   { name: 'Inbox zero', mins: 15, glyph: 'I', needsPhoto: false },
-  { name: 'Stretch', mins: 8, glyph: 'X', needsPhoto: false },
 ];
 
 export const DURATION_CHOICES = [10, 25, 40, 60];

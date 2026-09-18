@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from './PressableScale';
 import { colors, fonts, inkAlpha, radii } from '../theme';
 import { formatSlot } from '../state/schedule';
+import { useSheetDismiss } from './useSheetDismiss';
 
 const ROW_H = 44;
 
@@ -29,6 +31,7 @@ export default function TimeSlotSheet({
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const positioned = useRef(false);
+  const { gesture, sheetStyle, backdropStyle, onScroll } = useSheetDismiss(onClose);
 
   // Open on the current value rather than at the top, three rows up so there is
   // context above it — but only once. Re-running this on every render is what
@@ -45,14 +48,19 @@ export default function TimeSlotSheet({
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={StyleSheet.absoluteFill}>
+      <Animated.View
+        entering={FadeIn.duration(180)}
+        exiting={FadeOut.duration(140)}
+        style={[StyleSheet.absoluteFill, backdropStyle]}
+      >
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={onClose} />
       </Animated.View>
 
+      <GestureDetector gesture={gesture}>
       <Animated.View
         entering={SlideInDown.duration(240).easing(Easing.out(Easing.cubic))}
         exiting={SlideOutDown.duration(180).easing(Easing.in(Easing.cubic))}
-        style={[styles.sheetOuter, { paddingBottom: insets.bottom }]}
+        style={[styles.sheetOuter, { paddingBottom: insets.bottom }, sheetStyle]}
       >
         <View style={styles.sheet}>
           <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
@@ -64,7 +72,13 @@ export default function TimeSlotSheet({
             {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
           </View>
 
-          <ScrollView ref={scrollRef} style={styles.list} contentContainerStyle={styles.listContent}>
+          <Animated.ScrollView
+            ref={scrollRef}
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            scrollEventThrottle={16}
+            onScroll={onScroll}
+          >
             {slots.map((slot) => {
               const on = slot === value;
               const onTheHour = slot % 60 === 0;
@@ -81,13 +95,14 @@ export default function TimeSlotSheet({
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </Animated.ScrollView>
 
           <PressableScale style={styles.cancel} onPress={onClose} scaleTo={0.97}>
             <Text style={styles.cancelText}>Cancel</Text>
           </PressableScale>
         </View>
       </Animated.View>
+      </GestureDetector>
     </View>
   );
 }

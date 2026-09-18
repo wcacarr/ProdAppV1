@@ -11,25 +11,16 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  Easing,
-  runOnJS,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
 import { DURATION_CHOICES, PRESETS } from '../state/data';
+import { useSheetDismiss } from './useSheetDismiss';
 import { SLOT_MIN, formatSlot, slotChoices } from '../state/schedule';
 
 const SLOT_CHIP_W = 84;
-const SETTLE = { duration: 190, easing: Easing.out(Easing.cubic) };
-/** How far down it has to travel before letting go throws it away. */
-const DISMISS_PX = 110;
 
 export default function AddQuestSheet() {
   const scrollRef = React.useRef<ScrollView>(null);
@@ -51,65 +42,12 @@ export default function AddQuestSheet() {
 
   const dayWindow = useQuestStore((s) => s.dayWindow);
 
-  const dragY = useSharedValue(0);
-  // Read straight off the scroll in a worklet. Deciding this from React state
-  // was the reason the swipe only worked sometimes: the flag lagged a frame
-  // behind the finger, and never updated at all on a sheet short enough not to
-  // scroll.
-  const scrollY = useSharedValue(0);
-  const startY = useSharedValue(0);
-  const dismissing = useSharedValue(false);
-
-  const onScroll = useAnimatedScrollHandler({
-    onScroll: (e) => {
-      scrollY.value = e.contentOffset.y;
-    },
-  });
-
   const dismiss = React.useCallback(() => {
     Keyboard.dismiss();
     closeSheet();
   }, [closeSheet]);
 
-  // Grabbable anywhere on the sheet. Activation is decided by hand so the
-  // gesture only takes the touch when it should: a downward drag at the top of
-  // the list moves the sheet, and anything else is handed straight back to the
-  // scroll view instead of being swallowed.
-  const swipeDown = Gesture.Pan()
-    .manualActivation(true)
-    .onTouchesDown((e) => {
-      dismissing.value = false;
-      startY.value = e.changedTouches[0].absoluteY;
-    })
-    .onTouchesMove((e, manager) => {
-      const dy = e.changedTouches[0].absoluteY - startY.value;
-      if (scrollY.value > 1 || dy < -4) {
-        manager.fail();
-      } else if (dy > 10) {
-        manager.activate();
-      }
-    })
-    .onUpdate((e) => {
-      dragY.value = Math.max(0, e.translationY);
-    })
-    .onEnd((e) => {
-      if (e.translationY > DISMISS_PX || e.velocityY > 900) {
-        dismissing.value = true;
-        runOnJS(dismiss)();
-      }
-    })
-    .onFinalize(() => {
-      if (!dismissing.value) dragY.value = withTiming(0, SETTLE);
-    });
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dragY.value }],
-  }));
-
-  // The backdrop thins out as the sheet leaves, so the drag feels connected.
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - dragY.value / (DISMISS_PX * 2.4)),
-  }));
+  const { gesture: swipeDown, sheetStyle, backdropStyle, onScroll } = useSheetDismiss(dismiss);
 
   // Open the slot strip on the chosen time rather than at the start of the day.
   const onSlotStripLayout = () => {
