@@ -25,7 +25,14 @@ import {
   rescheduleReminders,
   scheduleQuestEnd,
 } from '../notify/notifications';
-import { grantUnlock, setBedtime as setNativeBedtime } from '../../modules/questlock-blocker';
+import {
+  getLockStates,
+  grantUnlock,
+  setBedtime as setNativeBedtime,
+  unlockApp,
+} from '../../modules/questlock-blocker';
+import { dayKey, daysBetween } from './day';
+import { deletePhotos } from './photos';
 
 type QuestState = {
   screen: Screen;
@@ -49,6 +56,7 @@ type QuestState = {
   draftMins: number;
   draftNeedsPhoto: boolean;
   draftStartMin: number;
+  draftRepeat: boolean;
   /** Quest whose time slot is being changed, or null. */
   editingTimeId: number | null;
 
@@ -63,6 +71,8 @@ type QuestState = {
   bedtimeStartMin: number;
   bedtimeWakeMin: number;
   remindersEnabled: boolean;
+  /** The day the app last saw, so it knows when a new one has started. */
+  lastDayKey: string;
 
   setScreen: (screen: Screen) => void;
   setPlayerExpanded: (open: boolean) => void;
@@ -75,6 +85,15 @@ type QuestState = {
   /** Re-lays the pending reminders from current state (foreground, rehydrate). */
   syncReminders: () => void;
   deleteQuest: (id: number) => void;
+  updateQuest: (id: number, patch: Partial<Quest>) => void;
+  /** Quest open in the editor, or null. */
+  editingQuestId: number | null;
+  openQuestEditor: (id: number) => void;
+  closeQuestEditor: () => void;
+  /** Starts a fresh day if the date has changed since the app last ran. */
+  rollOverIfNewDay: () => void;
+  /** Wipes everything back to first-run, including the native locks. */
+  resetEverything: () => void;
   reorderQuests: (from: number, to: number) => void;
   openTimeEditor: (id: number) => void;
   closeTimeEditor: () => void;
@@ -100,6 +119,7 @@ type QuestState = {
   setDraftMins: (mins: number) => void;
   setDraftNeedsPhoto: (needsPhoto: boolean) => void;
   setDraftStartMin: (startMin: number) => void;
+  setDraftRepeat: (repeat: boolean) => void;
   addPreset: (name: string, mins: number, glyph: string, needsPhoto: boolean) => void;
   addCustom: () => void;
 };
@@ -165,6 +185,7 @@ export const useQuestStore = create<QuestState>()(
   draftMins: 25,
   draftNeedsPhoto: false,
   draftStartMin: DEFAULT_WINDOW.startMin,
+  draftRepeat: true,
   editingTimeId: null,
 
   toast: '',
@@ -177,6 +198,8 @@ export const useQuestStore = create<QuestState>()(
   bedtimeStartMin: 22 * 60,
   bedtimeWakeMin: 7 * 60,
   remindersEnabled: false,
+  lastDayKey: dayKey(),
+  editingQuestId: null,
 
   setScreen: (screen) => set({ screen }),
   setPlayerExpanded: (open) => set({ playerExpanded: open }),
@@ -227,6 +250,99 @@ export const useQuestStore = create<QuestState>()(
     const quest = get().quests.find((q) => q.id === id);
     set((s) => ({ quests: s.quests.filter((q) => q.id !== id) }));
     if (quest) get().flash(`${quest.name} removed.`);
+  },
+
+  updateQuest: (id, patch) =>
+    set((s) => ({
+      editingQuestId: null,
+      quests: s.quests.map((q) =>
+        q.id === id
+          ? {
+              ...q,
+              ...patch,
+              startMin: patch.startMin != null ? clampToWindow(patch.startMin, s.dayWindow) : q.startMin,
+            }
+          : q
+      ),
+    })),
+
+  openQuestEditor: (id) => set({ editingQuestId: id }),
+  closeQuestEditor: () => set({ editingQuestId: null }),
+
+  /**
+   * A new day resets the routine rather than piling onto yesterday's list.
+   * Repeating quests come back unticked; one-offs are cleared. The streak
+   * counts consecutive days on which at least one quest was claimed, so
+   * skipping a day breaks it and a gap of several days does too.
+   */
+  rollOverIfNewDay: () => {
+    const s = get();
+    const today = dayKey();
+    if (s.lastDayKey === today) return;
+
+    const claimedLastDay = s.quests.some((q) => q.done);
+    const gap = daysBetween(s.lastDayKey, today);
+    const continued = gap === 1 && claimedLastDay;
+
+    set({
+      lastDayKey: today,
+      dayStreak: continued ? s.dayStreak + 1 : 1,
+      quests: s.quests
+        .filter((q) => q.repeat)
+        .map((q) => ({ ...q, done: false, photoUri: undefined })),
+      // Nothing in-flight survives a date change.
+      activeId: null,
+      focusEndAt: null,
+      focusLeft: 0,
+      focusTotal: 0,
+      awaitingPhotoId: null,
+      reward: null,
+    });
+    clearFocusTimer();
+    void cancelQuestEnd();
+    get().syncReminders();
+  },
+
+  resetEverything: () => {
+    clearFocusTimer();
+    void cancelQuestEnd();
+    void cancelReminders();
+    void deletePhotos(get().quests);
+    // Locks live natively, so wiping our storage alone would strand every
+    // locked app with no way left to open it.
+    for (const lock of getLockStates()) unlockApp(lock.packageName);
+    setNativeBedtime(false, 22 * 60, 7 * 60);
+    set({
+      screen: 'today',
+      balance: 0,
+      lifetime: 0,
+      dayStreak: 1,
+      quests: INITIAL_QUESTS,
+      lastDayKey: dayKey(),
+      activeId: null,
+      focusEndAt: null,
+      focusLeft: 0,
+      focusTotal: 0,
+      awaitingPhotoId: null,
+      reward: null,
+      rewardCounter: 0,
+      sheet: false,
+      editingQuestId: null,
+      editingTimeId: null,
+      draftName: '',
+      draftMins: 25,
+      draftNeedsPhoto: false,
+      draftStartMin: DEFAULT_WINDOW.startMin,
+      blockPackage: null,
+      playerExpanded: false,
+      musicEnabled: true,
+      dayWindow: DEFAULT_WINDOW,
+      bedtimeEnabled: false,
+      bedtimeStartMin: 22 * 60,
+      bedtimeWakeMin: 7 * 60,
+      remindersEnabled: false,
+    });
+    get().flash('Everything erased.');
   },
 
   // Indices are positions in the schedule, not in the raw array.
@@ -377,6 +493,7 @@ export const useQuestStore = create<QuestState>()(
   setDraftNeedsPhoto: (needsPhoto) => set({ draftNeedsPhoto: needsPhoto }),
   setDraftStartMin: (startMin) =>
     set((s) => ({ draftStartMin: clampToWindow(startMin, s.dayWindow) })),
+  setDraftRepeat: (repeat) => set({ draftRepeat: repeat }),
 
   addPreset: (name, mins, glyph, needsPhoto) => {
     set((s) => ({
@@ -389,6 +506,7 @@ export const useQuestStore = create<QuestState>()(
           glyph,
           done: false,
           needsPhoto,
+          repeat: true,
           startMin: nextFreeSlot(s.quests, mins, s.dayWindow),
         },
       ],
@@ -414,6 +532,7 @@ export const useQuestStore = create<QuestState>()(
           glyph: name[0].toUpperCase(),
           done: false,
           needsPhoto: st.draftNeedsPhoto,
+          repeat: st.draftRepeat,
           startMin: st.draftStartMin,
         },
       ],
@@ -426,7 +545,7 @@ export const useQuestStore = create<QuestState>()(
     }),
     {
       name: 'tasuku-store-v1',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       // Progress, settings and any running quest survive. Sheets and the
       // current screen deliberately do not.
@@ -441,24 +560,43 @@ export const useQuestStore = create<QuestState>()(
         bedtimeStartMin: s.bedtimeStartMin,
         bedtimeWakeMin: s.bedtimeWakeMin,
         remindersEnabled: s.remindersEnabled,
+        lastDayKey: s.lastDayKey,
         activeId: s.activeId,
         focusEndAt: s.focusEndAt,
         focusTotal: s.focusTotal,
       }),
-      // v1 quests predate the calendar, so lay them out down the morning in
-      // the order they were already in.
       migrate: (persisted, version) => {
-        const state = persisted as Partial<QuestState> | undefined;
-        if (!state || version >= 2) return state as QuestState;
-        let cursor = DEFAULT_WINDOW.startMin;
-        const quests = (state.quests ?? []).map((q) => {
-          const startMin = ceilToWindow(cursor, DEFAULT_WINDOW);
-          cursor = startMin + Math.max(q.mins, 30);
-          return { ...q, startMin };
-        });
-        return { ...state, quests } as QuestState;
+        let state = persisted as Partial<QuestState> | undefined;
+        if (!state) return state as unknown as QuestState;
+
+        // v1 quests predate the calendar, so lay them out down the morning in
+        // the order they were already in.
+        if (version < 2) {
+          let cursor = DEFAULT_WINDOW.startMin;
+          const quests = (state.quests ?? []).map((q) => {
+            const startMin = ceilToWindow(cursor, DEFAULT_WINDOW);
+            cursor = startMin + Math.max(q.mins, 30);
+            return { ...q, startMin };
+          });
+          state = { ...state, quests };
+        }
+
+        // v2 quests predate the day boundary. Treat them as the routine, since
+        // that is what a list you have been keeping actually is.
+        if (version < 3) {
+          state = {
+            ...state,
+            lastDayKey: dayKey(),
+            quests: (state.quests ?? []).map((q) => ({ ...q, repeat: q.repeat ?? true })),
+          };
+        }
+
+        return state as QuestState;
       },
       onRehydrateStorage: () => (state) => {
+        // Before anything else: if the date changed while the app was closed,
+        // today starts clean.
+        state?.rollOverIfNewDay();
         // A quest that was running when the app was killed picks up where the
         // clock says it should be, not where it was when we lost focus.
         state?.syncFocus();

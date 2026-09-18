@@ -1,9 +1,9 @@
 import { Preset, Quest } from './types';
 
 export const INITIAL_QUESTS: Quest[] = [
-  { id: 1, name: 'Dishes', mins: 10, glyph: 'D', done: false, needsPhoto: true, startMin: 7 * 60 },
-  { id: 2, name: 'Walk outside', mins: 20, glyph: 'W', done: false, needsPhoto: false, startMin: 8 * 60 },
-  { id: 3, name: 'Study — deep work block', mins: 40, glyph: 'S', done: false, needsPhoto: false, startMin: 9 * 60 },
+  { id: 1, name: 'Dishes', mins: 10, glyph: 'D', done: false, needsPhoto: true, startMin: 7 * 60, repeat: true },
+  { id: 2, name: 'Walk outside', mins: 20, glyph: 'W', done: false, needsPhoto: false, startMin: 8 * 60, repeat: true },
+  { id: 3, name: 'Study — deep work block', mins: 40, glyph: 'S', done: false, needsPhoto: false, startMin: 9 * 60, repeat: true },
 ];
 
 export const PRESETS: Preset[] = [

@@ -28,15 +28,20 @@ export default function TimeSlotSheet({
 }) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const positioned = useRef(false);
 
   // Open on the current value rather than at the top, three rows up so there is
-  // context above it.
+  // context above it — but only once. Re-running this on every render is what
+  // made the list snap back to the current time the moment you started
+  // scrolling, since `slots` is a fresh array each time the parent renders.
   useEffect(() => {
+    if (positioned.current) return;
+    positioned.current = true;
     const index = Math.max(0, slots.indexOf(value));
     const y = Math.max(0, (index - 3) * ROW_H);
     const id = setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 30);
     return () => clearTimeout(id);
-  }, [value, slots]);
+  }, [slots, value]);
 
   return (
     <View style={StyleSheet.absoluteFill}>

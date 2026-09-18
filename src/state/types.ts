@@ -11,6 +11,11 @@ export type Quest = {
   photoUri?: string;
   /** Start of its calendar slot, in minutes from midnight (420 = 7:00 AM). */
   startMin: number;
+  /**
+   * Part of the daily routine. Repeating quests come back unticked tomorrow;
+   * one-offs are cleared off the calendar when the day rolls over.
+   */
+  repeat: boolean;
 };
 
 export type Offer = {

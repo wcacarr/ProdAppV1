@@ -11,9 +11,11 @@ import PressableScale from '../components/PressableScale';
 import SwipeToDelete from '../components/SwipeToDelete';
 import DraggableList from '../components/DraggableList';
 import TimeSlotSheet from '../components/TimeSlotSheet';
+import EditQuestSheet from '../components/EditQuestSheet';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { isBedtimeActive, useQuestStore } from '../state/store';
 import { useNowMinute } from '../state/useClock';
+import { weekdayName } from '../state/day';
 import { fastestRemaining, questReward } from '../state/selectors';
 import { rankFor } from '../state/ranks';
 import { useAppRegistry } from '../state/useAppRegistry';
@@ -77,6 +79,9 @@ export default function TodayScreen() {
   const doneCount = quests.filter((q) => q.done).length;
   const booked = bookedMinutes(quests);
   const editing = quests.find((q) => q.id === editingTimeId) ?? null;
+  const editingQuestId = useQuestStore((s) => s.editingQuestId);
+  const openQuestEditor = useQuestStore((s) => s.openQuestEditor);
+  const editingQuest = quests.find((q) => q.id === editingQuestId) ?? null;
 
   const nowMin = useNowMinute();
   const bedtimeEnabled = useQuestStore((s) => s.bedtimeEnabled);
@@ -97,7 +102,9 @@ export default function TodayScreen() {
       >
         <View style={styles.summaryRow}>
           <View>
-            <Text style={styles.dayLabel}>TUESDAY · DAY {dayStreak}</Text>
+            <Text style={styles.dayLabel}>
+              {weekdayName()} · DAY {dayStreak}
+            </Text>
             <Text style={styles.balance}>{balance} XP</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -172,6 +179,7 @@ export default function TodayScreen() {
                       : startQuest(q.id)
                   }
                   onEditTime={() => openTimeEditor(q.id)}
+                  onEdit={() => openQuestEditor(q.id)}
                   onClaimed={() => flash('Already claimed today.')}
                 />
               </SwipeToDelete>
@@ -197,6 +205,8 @@ export default function TodayScreen() {
         </ScrollView>
       </GlassPane>
 
+      {editingQuest && <EditQuestSheet quest={editingQuest} />}
+
       {editing && (
         <TimeSlotSheet
           title={editing.name}
@@ -218,6 +228,7 @@ function QuestRow({
   asleep,
   onStart,
   onEditTime,
+  onEdit,
   onClaimed,
 }: {
   quest: Quest;
@@ -227,6 +238,7 @@ function QuestRow({
   asleep: boolean;
   onStart: () => void;
   onEditTime: () => void;
+  onEdit: () => void;
   onClaimed: () => void;
 }) {
   const done = quest.done;
@@ -249,7 +261,9 @@ function QuestRow({
 
       <View style={styles.timeRule} />
 
-      <View style={{ flex: 1, minWidth: 0 }}>
+      {/* The body opens the editor — tapping the thing you want to change is
+          more obvious than hunting for a pencil. */}
+      <Pressable style={{ flex: 1, minWidth: 0 }} onPress={onEdit}>
         <Text
           numberOfLines={1}
           style={[
@@ -265,7 +279,7 @@ function QuestRow({
         >
           {live ? `NOW · ${questReward(quest)}` : clashes && !done ? `OVERLAPS · ${questReward(quest)}` : questReward(quest)}
         </Text>
-      </View>
+      </Pressable>
 
       <PressableScale
         onPress={done ? onClaimed : onStart}

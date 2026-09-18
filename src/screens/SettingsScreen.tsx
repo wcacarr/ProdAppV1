@@ -37,8 +37,25 @@ export default function SettingsScreen() {
   const remindersEnabled = useQuestStore((s) => s.remindersEnabled);
   const setRemindersEnabled = useQuestStore((s) => s.setRemindersEnabled);
 
+  const resetEverything = useQuestStore((s) => s.resetEverything);
+
   const [editing, setEditing] = useState<Editing>(null);
   const [notificationsGranted, setNotificationsGranted] = useState(true);
+  // Two taps rather than a dialog: irreversible, so it should take a moment,
+  // but a modal for something nobody presses by accident is overkill.
+  const [armed, setArmed] = useState(false);
+
+  const erase = useCallback(() => {
+    if (!armed) {
+      setArmed(true);
+      return;
+    }
+    setArmed(false);
+    resetEverything();
+  }, [armed, resetEverything]);
+
+  // Arming should not survive leaving the screen.
+  useEffect(() => () => setArmed(false), []);
 
   useEffect(() => {
     getNotificationPermission().then(setNotificationsGranted).catch(() => {});
@@ -150,6 +167,21 @@ export default function SettingsScreen() {
             backed up — uninstalling deletes all of it.
           </Text>
         </View>
+
+        <PressableScale
+          style={[styles.eraseBtn, armed && styles.eraseBtnArmed]}
+          onPress={erase}
+          scaleTo={0.98}
+        >
+          <Text style={[styles.eraseText, armed && styles.eraseTextArmed]}>
+            {armed ? 'Tap again to erase everything' : 'Erase all my data'}
+          </Text>
+        </PressableScale>
+        <Text style={styles.eraseHint}>
+          {armed
+            ? 'This cannot be undone. Tap anywhere else to cancel.'
+            : 'Deletes XP, rank, quests, settings and every photo file, and unlocks every locked app.'}
+        </Text>
       </ScrollView>
 
       {editing && (
@@ -350,6 +382,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: inkAlpha(0.12),
   },
+  eraseBtn: {
+    marginTop: 10,
+    paddingVertical: 13,
+    borderRadius: 999,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.18),
+  },
+  eraseBtnArmed: { borderColor: 'rgba(150,54,38,0.6)', backgroundColor: 'rgba(150,54,38,0.1)' },
+  eraseText: { fontFamily: fonts.bodySemi, fontSize: 13, color: inkAlpha(0.55) },
+  eraseTextArmed: { fontFamily: fonts.bodyBold, color: '#963626' },
+  eraseHint: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    lineHeight: 16,
+    color: inkAlpha(0.5),
+    marginTop: 8,
+    paddingHorizontal: 3,
+  },
+
   noteTitle: { fontFamily: fonts.bodyExtra, fontSize: 12.5, color: colors.ink },
   noteBody: { fontFamily: fonts.body, fontSize: 11.5, lineHeight: 17, color: inkAlpha(0.65), marginTop: 5 },
 });

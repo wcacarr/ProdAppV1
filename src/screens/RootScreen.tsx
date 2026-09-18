@@ -48,13 +48,19 @@ export default function RootScreen() {
   // Reminders are laid down from whatever is true when the app is open, so
   // going to the background is also the moment to leave the right ones behind.
   const syncReminders = useQuestStore((s) => s.syncReminders);
+  // Coming back after midnight is the usual way a new day arrives, so the
+  // rollover is checked before anything else looks at the quest list.
+  const rollOverIfNewDay = useQuestStore((s) => s.rollOverIfNewDay);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') syncFocus();
+      if (s === 'active') {
+        rollOverIfNewDay();
+        syncFocus();
+      }
       syncReminders();
     });
     return () => sub.remove();
-  }, [syncFocus, syncReminders]);
+  }, [rollOverIfNewDay, syncFocus, syncReminders]);
 
   return (
     <View style={styles.root}>

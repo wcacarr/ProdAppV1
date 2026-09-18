@@ -45,6 +45,8 @@ export default function AddQuestSheet() {
   const setDraftNeedsPhoto = useQuestStore((s) => s.setDraftNeedsPhoto);
   const draftStartMin = useQuestStore((s) => s.draftStartMin);
   const setDraftStartMin = useQuestStore((s) => s.setDraftStartMin);
+  const draftRepeat = useQuestStore((s) => s.draftRepeat);
+  const setDraftRepeat = useQuestStore((s) => s.setDraftRepeat);
 
   const dayWindow = useQuestStore((s) => s.dayWindow);
 
@@ -204,6 +206,20 @@ export default function AddQuestSheet() {
                 );
               })}
             </ScrollView>
+
+            <Pressable style={styles.photoToggle} onPress={() => setDraftRepeat(!draftRepeat)}>
+              <View style={[styles.photoCheckbox, draftRepeat && styles.photoCheckboxOn]}>
+                {draftRepeat && <Text style={styles.photoCheckmark}>{'✓'}</Text>}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoLabel}>Every day</Text>
+                <Text style={styles.photoHint}>
+                  {draftRepeat
+                    ? 'Part of the routine — it comes back unticked tomorrow.'
+                    : 'A one-off. It leaves the calendar when the day rolls over.'}
+                </Text>
+              </View>
+            </Pressable>
 
             <Pressable style={styles.photoToggle} onPress={() => setDraftNeedsPhoto(!draftNeedsPhoto)}>
               <View style={[styles.photoCheckbox, draftNeedsPhoto && styles.photoCheckboxOn]}>
