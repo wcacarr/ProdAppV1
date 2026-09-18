@@ -22,6 +22,8 @@ export type DeviceNowPlaying = {
   positionMs: number;
   durationMs: number;
   appPackage: string;
+  /** "Spotify" — a fallback label when the app publishes no track metadata. */
+  appName: string;
   albumArtUrl: string | null;
 };
 

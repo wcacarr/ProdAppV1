@@ -105,10 +105,11 @@ export default function ExpandedPlayer() {
               </View>
 
               <Text style={styles.title} numberOfLines={2}>
-                {now?.trackName || 'Nothing playing'}
+                {now?.trackName || now?.appName || 'Nothing playing'}
               </Text>
               <Text style={styles.artist} numberOfLines={1}>
-                {now?.artistName || 'Play something in any music app'}
+                {now?.artistName ||
+                  (now?.appName ? 'Playing on your phone' : 'Play something in any music app')}
               </Text>
 
               <GestureDetector gesture={scrub}>

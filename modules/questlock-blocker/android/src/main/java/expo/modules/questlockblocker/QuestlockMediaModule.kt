@@ -86,37 +86,70 @@ class QuestlockMediaModule : Module() {
     result["positionMs"] = position
     result["durationMs"] = duration
     result["appPackage"] = controller.packageName
+    result["appName"] = appLabel(controller.packageName)
     result["albumArtUrl"] = encodeArt(metadata)
     return result
   }
 
+  // Apps are inconsistent about which metadata keys they fill in. Spotify and
+  // others populate only the DISPLAY_* fields in some states, so every
+  // reasonable key is tried before giving up.
   private fun readTitle(metadata: MediaMetadata?): String {
     if (metadata == null) {
       return ""
     }
-    val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
-    return title ?: ""
+    val keys = arrayOf(
+      MediaMetadata.METADATA_KEY_TITLE,
+      MediaMetadata.METADATA_KEY_DISPLAY_TITLE
+    )
+    for (key in keys) {
+      val value = metadata.getString(key)
+      if (!value.isNullOrBlank()) {
+        return value
+      }
+    }
+    return ""
   }
 
   private fun readArtist(metadata: MediaMetadata?): String {
     if (metadata == null) {
       return ""
     }
-    val artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
-    if (artist != null) {
-      return artist
+    val keys = arrayOf(
+      MediaMetadata.METADATA_KEY_ARTIST,
+      MediaMetadata.METADATA_KEY_ALBUM_ARTIST,
+      MediaMetadata.METADATA_KEY_AUTHOR,
+      MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE,
+      MediaMetadata.METADATA_KEY_ALBUM
+    )
+    for (key in keys) {
+      val value = metadata.getString(key)
+      if (!value.isNullOrBlank()) {
+        return value
+      }
     }
-    val albumArtist = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
-    if (albumArtist != null) {
-      return albumArtist
+    return ""
+  }
+
+  /** "Spotify", so a session with no usable metadata still says something. */
+  private fun appLabel(packageName: String): String {
+    try {
+      val pm = context.packageManager
+      return pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    } catch (e: Throwable) {
+      return ""
     }
-    val author = metadata.getString(MediaMetadata.METADATA_KEY_AUTHOR)
-    return author ?: ""
   }
 
   /**
-   * Prefers a session that is actually playing, otherwise the most recent one,
-   * so a paused Audible book still shows up and can be resumed.
+   * Picks the session worth showing.
+   *
+   * Taking the first playing session was not enough: several apps and the
+   * system itself can hold a session at once, and a playing-but-empty one
+   * would win over the app the user can actually hear — which is how Spotify
+   * ended up displayed as "nothing playing". Sessions are scored instead, so
+   * having usable metadata counts for as much as being in the playing state,
+   * and a paused-but-labelled book still shows up to be resumed.
    */
   private fun activeController(): MediaController? {
     try {
@@ -130,18 +163,30 @@ class QuestlockMediaModule : Module() {
       if (sessions.isEmpty()) {
         return null
       }
-      for (session in sessions) {
-        val state = session.playbackState
-        if (state != null && state.state == PlaybackState.STATE_PLAYING) {
-          return session
-        }
-      }
-      return sessions[0]
+      return sessions.maxByOrNull { score(it) }
     } catch (e: SecurityException) {
       return null // notification access not granted yet
     } catch (e: Throwable) {
       return null
     }
+  }
+
+  private fun score(session: MediaController): Int {
+    var points = 0
+    val state = session.playbackState?.state
+    if (state == PlaybackState.STATE_PLAYING) {
+      points += 4
+    } else if (state == PlaybackState.STATE_BUFFERING || state == PlaybackState.STATE_PAUSED) {
+      // Buffering is about to be playing; paused is still worth offering.
+      points += 2
+    }
+    if (readTitle(session.metadata).isNotEmpty()) {
+      points += 3
+    }
+    if (session.playbackState?.actions?.and(PlaybackState.ACTION_PLAY_PAUSE) != 0L) {
+      points += 1
+    }
+    return points
   }
 
   private fun sendTransport(action: String): Boolean {

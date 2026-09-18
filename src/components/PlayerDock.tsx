@@ -21,9 +21,15 @@ export default function PlayerDock() {
       if (e.translationY < -40 || e.velocityY < -600) runOnJS(expand)(true);
     });
 
+  // Some apps publish a session with no track metadata. Falling straight
+  // through to "Nothing playing" then claimed nothing was on while the user
+  // could plainly hear it, so the app's own name stands in.
+  const title = now?.trackName || now?.appName || '';
+  const subtitle = now?.artistName || (now?.appName ? 'Playing on your phone' : '');
+
   const sourceLabel =
     now
-      ? 'DEVICE MEDIA'
+      ? now.appName ? now.appName.toUpperCase() : 'DEVICE MEDIA'
       : status === 'needs_permission'
         ? 'TAP TO CONNECT MEDIA'
         : status === 'unsupported'
@@ -62,10 +68,10 @@ export default function PlayerDock() {
             </Text>
           </View>
           <Text style={styles.trackTitle} numberOfLines={1}>
-            {now?.trackName || idleTitle}
+            {title || idleTitle}
           </Text>
           <Text style={styles.trackArtist} numberOfLines={1}>
-            {now?.artistName || idleSubtitle}
+            {subtitle || idleSubtitle}
           </Text>
         </Pressable>
         <View style={[styles.controls, !now && styles.controlsIdle]}>
