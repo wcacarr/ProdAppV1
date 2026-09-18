@@ -29,8 +29,9 @@ import { colors } from '../theme';
 // movement when the dock leaves.
 const reflow = LinearTransition.springify().damping(20).stiffness(170).mass(0.6);
 
-// Today only — everywhere else the space reads better empty.
-const DOCKED_SCREENS = ['today'];
+// Today and Focus. Everywhere else the space reads better empty, but during a
+// quest you should be able to skip a track without leaving the timer.
+const DOCKED_SCREENS = ['today', 'focus'];
 
 export default function RootScreen() {
   const screen = useQuestStore((s) => s.screen);
