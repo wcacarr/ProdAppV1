@@ -11,7 +11,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.wcacarr.questlock",
+      "package": "com.wcacarr.tasuku",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#F7F3E7",
