@@ -28,6 +28,7 @@ export default function StoreScreen() {
             packageName: app.packageName,
             label: app.label,
             tierLabel: tier.label,
+            tierUseLabel: tier.useLabel,
             mins: tier.mins,
             cost: tier.cost,
           } as Offer,
@@ -104,6 +105,9 @@ function OfferTile({
   onBuy: () => void;
 }) {
   const affordable = balance >= offer.cost;
+  // Stacked rather than side by side: at a third of the screen there is no room
+  // for a price and a duration on one line, and "Rest of the day" was the first
+  // thing to lose its tail.
   return (
     <PressableScale style={styles.tileWrap} onPress={onBuy}>
       <View style={[styles.tile, !affordable && styles.tileDim]}>
@@ -116,12 +120,12 @@ function OfferTile({
       <Text style={styles.tileName} numberOfLines={1}>
         {offer.label}
       </Text>
-      <View style={styles.metaRow}>
-        <Text style={[styles.cost, !affordable && { color: inkAlpha(0.45) }]}>
-          {affordable ? `${offer.cost} XP` : `${offer.cost - balance} short`}
-        </Text>
-        <Text style={styles.duration}>{offer.tierLabel}</Text>
-      </View>
+      <Text style={[styles.cost, !affordable && styles.costShort]}>
+        {affordable ? `${offer.cost} XP` : `${offer.cost - balance} XP short`}
+      </Text>
+      <Text style={styles.duration} numberOfLines={2}>
+        {offer.tierUseLabel}
+      </Text>
     </PressableScale>
   );
 }
@@ -159,8 +163,8 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
-  tileWrap: { width: '33.33%', alignItems: 'center', gap: 5, paddingHorizontal: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 18 },
+  tileWrap: { width: '33.33%', alignItems: 'center', gap: 4, paddingHorizontal: 5 },
   tile: {
     width: 52,
     height: 52,
@@ -176,9 +180,15 @@ const styles = StyleSheet.create({
   icon: { width: 44, height: 44, borderRadius: 11 },
   fallback: { fontFamily: fonts.bodyExtra, fontSize: 18, color: colors.ink },
   tileName: { fontFamily: fonts.bodySemi, fontSize: 10.5, color: colors.ink, textAlign: 'center' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  cost: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.ochreDeep },
-  duration: { fontFamily: fonts.mono, fontSize: 9, color: inkAlpha(0.5) },
+  cost: { fontFamily: fonts.bodyExtra, fontSize: 12, color: colors.ochreDeep, textAlign: 'center' },
+  costShort: { fontFamily: fonts.bodyBold, fontSize: 10, color: inkAlpha(0.45) },
+  duration: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    lineHeight: 12,
+    color: inkAlpha(0.5),
+    textAlign: 'center',
+  },
 
   emptyWrap: { paddingVertical: 28, paddingHorizontal: 10, alignItems: 'center', gap: 8 },
   emptyTitle: { fontFamily: fonts.bodyExtra, fontSize: 15, color: colors.ink },

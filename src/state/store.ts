@@ -19,6 +19,12 @@ import {
 } from './schedule';
 import { Offer, Quest, Reward, Screen } from './types';
 import { playDing } from '../sound/ding';
+import {
+  cancelQuestEnd,
+  cancelReminders,
+  rescheduleReminders,
+  scheduleQuestEnd,
+} from '../notify/notifications';
 import { grantUnlock, setBedtime as setNativeBedtime } from '../../modules/questlock-blocker';
 
 type QuestState = {
@@ -56,14 +62,18 @@ type QuestState = {
   bedtimeEnabled: boolean;
   bedtimeStartMin: number;
   bedtimeWakeMin: number;
+  remindersEnabled: boolean;
 
   setScreen: (screen: Screen) => void;
   setPlayerExpanded: (open: boolean) => void;
   setMusicEnabled: (on: boolean) => void;
   setDayWindow: (window: Partial<DayWindow>) => void;
   setBedtime: (next: Partial<{ enabled: boolean; startMin: number; wakeMin: number }>) => void;
+  setRemindersEnabled: (on: boolean) => void;
   /** Pushes the bedtime window down to the native blocker (boot, rehydrate). */
   syncBedtime: () => void;
+  /** Re-lays the pending reminders from current state (foreground, rehydrate). */
+  syncReminders: () => void;
   deleteQuest: (id: number) => void;
   reorderQuests: (from: number, to: number) => void;
   openTimeEditor: (id: number) => void;
@@ -166,6 +176,7 @@ export const useQuestStore = create<QuestState>()(
   bedtimeEnabled: false,
   bedtimeStartMin: 22 * 60,
   bedtimeWakeMin: 7 * 60,
+  remindersEnabled: false,
 
   setScreen: (screen) => set({ screen }),
   setPlayerExpanded: (open) => set({ playerExpanded: open }),
@@ -191,9 +202,25 @@ export const useQuestStore = create<QuestState>()(
     get().syncBedtime();
   },
 
+  setRemindersEnabled: (on) => {
+    set({ remindersEnabled: on });
+    if (on) get().syncReminders();
+    else void cancelReminders();
+  },
+
   syncBedtime: () => {
     const s = get();
     setNativeBedtime(s.bedtimeEnabled, s.bedtimeStartMin, s.bedtimeWakeMin);
+  },
+
+  syncReminders: () => {
+    const s = get();
+    void rescheduleReminders({
+      enabled: s.remindersEnabled,
+      hasUnfinished: s.quests.some((q) => !q.done),
+      nudgeMin: s.dayWindow.startMin,
+      bedtimeStartMin: s.bedtimeEnabled ? s.bedtimeStartMin : null,
+    });
   },
 
   deleteQuest: (id) => {
@@ -227,15 +254,19 @@ export const useQuestStore = create<QuestState>()(
     const q = get().quests.find((x) => x.id === id);
     if (!q) return;
     const totalSecs = q.mins * 60;
+    const endAt = Date.now() + totalSecs * 1000;
     set({
       screen: 'focus',
       activeId: id,
-      focusEndAt: Date.now() + totalSecs * 1000,
+      focusEndAt: endAt,
       focusTotal: totalSecs,
       focusLeft: totalSecs,
       blockPackage: null,
     });
     runFocusTimer(set, get);
+    // JS is frozen in the background, so the only thing that can tell you the
+    // timer landed while you were in a phone call is the OS.
+    if (get().remindersEnabled) void scheduleQuestEnd(q.name, endAt);
   },
 
   // The countdown is always derived from focusEndAt rather than counted down,
@@ -257,6 +288,7 @@ export const useQuestStore = create<QuestState>()(
   // Quests that need proof pause here; the reward only lands once the photo is in.
   finishQuest: () => {
     clearFocusTimer();
+    void cancelQuestEnd();
     const s = get();
     const q = s.quests.find((x) => x.id === s.activeId);
     set({ focusEndAt: null, focusLeft: 0 });
@@ -286,6 +318,7 @@ export const useQuestStore = create<QuestState>()(
 
   bailQuest: () => {
     clearFocusTimer();
+    void cancelQuestEnd();
     const s = get();
     const q = s.quests.find((x) => x.id === s.activeId);
     if (!q) return;
@@ -407,6 +440,7 @@ export const useQuestStore = create<QuestState>()(
         bedtimeEnabled: s.bedtimeEnabled,
         bedtimeStartMin: s.bedtimeStartMin,
         bedtimeWakeMin: s.bedtimeWakeMin,
+        remindersEnabled: s.remindersEnabled,
         activeId: s.activeId,
         focusEndAt: s.focusEndAt,
         focusTotal: s.focusTotal,
@@ -431,6 +465,7 @@ export const useQuestStore = create<QuestState>()(
         // Native prefs can be wiped (clear data) without touching ours, so the
         // saved bedtime window is re-asserted on every start.
         state?.syncBedtime();
+        state?.syncReminders();
       },
     }
   )

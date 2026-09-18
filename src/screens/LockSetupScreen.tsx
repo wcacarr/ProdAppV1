@@ -1,5 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AppState,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import GlassPane from '../components/GlassPane';
 import UnlockChallenge from '../components/UnlockChallenge';
 import { colors, fonts, inkAlpha, radii } from '../theme';
@@ -22,6 +31,21 @@ export default function LockSetupScreen() {
   const [enforcementOn, setEnforcementOn] = useState(false);
   const [mediaOn, setMediaOn] = useState(false);
   const [challenge, setChallenge] = useState<AppEntry | null>(null);
+  const [query, setQuery] = useState('');
+
+  // Locked apps stay pinned to the top: they are the ones you came to change,
+  // and on a phone with a hundred apps they would otherwise be lost in the As.
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const matches = needle
+      ? entries.filter(
+          (e) =>
+            e.label.toLowerCase().includes(needle) ||
+            e.packageName.toLowerCase().includes(needle)
+        )
+      : entries;
+    return [...matches].sort((a, b) => Number(b.locked) - Number(a.locked));
+  }, [entries, query]);
 
   const refreshPermissions = useCallback(() => {
     setEnforcementOn(isAccessibilityServiceEnabled());
@@ -105,8 +129,28 @@ export default function LockSetupScreen() {
           />
 
           <Text style={styles.sectionLabel}>PICK APPS TO LOCK</Text>
+          <View style={styles.searchWrap}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search your apps"
+              placeholderTextColor={inkAlpha(0.4)}
+              autoCorrect={false}
+              autoCapitalize="none"
+              style={styles.search}
+            />
+            {query.length > 0 && (
+              <Pressable style={styles.searchClear} onPress={() => setQuery('')} hitSlop={8}>
+                <Text style={styles.searchClearText}>{'✕'}</Text>
+              </Pressable>
+            )}
+          </View>
+
           {loading && <Text style={styles.body}>Loading your apps…</Text>}
-          {entries.map((entry) => (
+          {!loading && shown.length === 0 && (
+            <Text style={styles.body}>Nothing matches "{query.trim()}".</Text>
+          )}
+          {shown.map((entry) => (
             <AppRow key={entry.packageName} entry={entry} onToggle={() => toggle(entry)} />
           ))}
         </ScrollView>
@@ -270,6 +314,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
     paddingTop: 8,
   },
+  searchWrap: { justifyContent: 'center' },
+  search: {
+    paddingVertical: 11,
+    paddingLeft: 13,
+    paddingRight: 36,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.16),
+    backgroundColor: 'rgba(255,252,242,.85)',
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  searchClear: { position: 'absolute', right: 12 },
+  searchClearText: { fontFamily: fonts.bodyBold, fontSize: 13, color: inkAlpha(0.45) },
+
   appRow: {
     flexDirection: 'row',
     alignItems: 'center',

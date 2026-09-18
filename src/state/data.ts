@@ -19,10 +19,14 @@ export const PRESETS: Preset[] = [
 
 export const DURATION_CHOICES = [10, 25, 40, 60];
 
-/** Screen time you can buy for a locked app, cheapest first. */
+/**
+ * Screen time you can buy for a locked app, cheapest first. `label` is the
+ * terse form for toasts; `useLabel` is what the store tile says, phrased as the
+ * thing you are actually buying.
+ */
 export const UNLOCK_TIERS = [
-  { label: '15 min', mins: 15, cost: 40 },
-  { label: '30 min', mins: 30, cost: 70 },
-  { label: '1 hour', mins: 60, cost: 120 },
-  { label: 'Rest of the day', mins: 600, cost: 400 },
+  { label: '15 min', useLabel: '15 mins of use', mins: 15, cost: 40 },
+  { label: '30 min', useLabel: '30 mins of use', mins: 30, cost: 70 },
+  { label: '1 hour', useLabel: '1 hour of use', mins: 60, cost: 120 },
+  { label: 'rest of the day', useLabel: 'Rest of the day', mins: 600, cost: 400 },
 ];

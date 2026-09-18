@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
@@ -6,6 +6,10 @@ import TimeSlotSheet from '../components/TimeSlotSheet';
 import { colors, fonts, inkAlpha, radii } from '../theme';
 import { useQuestStore } from '../state/store';
 import { rankFor } from '../state/ranks';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '../notify/notifications';
 import {
   MIN_WINDOW_MIN,
   allDaySlots,
@@ -30,7 +34,27 @@ export default function SettingsScreen() {
   const setBedtime = useQuestStore((s) => s.setBedtime);
   const rank = rankFor(lifetime);
 
+  const remindersEnabled = useQuestStore((s) => s.remindersEnabled);
+  const setRemindersEnabled = useQuestStore((s) => s.setRemindersEnabled);
+
   const [editing, setEditing] = useState<Editing>(null);
+  const [notificationsGranted, setNotificationsGranted] = useState(true);
+
+  useEffect(() => {
+    getNotificationPermission().then(setNotificationsGranted).catch(() => {});
+  }, [remindersEnabled]);
+
+  // Asking only when the toggle goes on keeps the permission prompt tied to a
+  // thing the user just asked for.
+  const toggleReminders = useCallback(async () => {
+    if (remindersEnabled) {
+      setRemindersEnabled(false);
+      return;
+    }
+    const granted = await requestNotificationPermission();
+    setNotificationsGranted(granted);
+    setRemindersEnabled(granted);
+  }, [remindersEnabled, setRemindersEnabled]);
   const dayLength = dayWindow.endMin - dayWindow.startMin;
   const asleepNow =
     bedtimeEnabled && isWithinNightly(minutesOfDay(), bedtimeStartMin, bedtimeWakeMin);
@@ -83,6 +107,22 @@ export default function SettingsScreen() {
               {asleepNow
                 ? `Bedtime is on right now — locked apps stay shut until ${formatSlot(bedtimeWakeMin)}.`
                 : `Everything locked will shut at ${formatSlot(bedtimeStartMin)}.`}
+            </Text>
+          </View>
+        )}
+
+        <Text style={styles.sectionLabel}>REMINDERS</Text>
+        <Toggle
+          on={remindersEnabled}
+          title="Nudges and timer alerts"
+          body="Tells you when a quest timer lands while you are elsewhere, and once a day if nothing has been claimed. Scheduled on this phone — nothing is sent anywhere."
+          onToggle={toggleReminders}
+        />
+        {remindersEnabled && !notificationsGranted && (
+          <View style={[styles.card, { marginTop: 8 }]}>
+            <Text style={styles.cardFoot}>
+              Android has not granted notification permission, so nothing will appear. Turn this off
+              and on again to ask, or allow it in the phone's app settings.
             </Text>
           </View>
         )}

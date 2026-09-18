@@ -9,6 +9,10 @@ import ScheduleTutorial from '../components/ScheduleTutorial';
 import { colors, fonts, inkAlpha, radii } from '../theme';
 import { useQuestStore } from '../state/store';
 import {
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '../notify/notifications';
+import {
   isAccessibilityServiceEnabled,
   isBlockingSupported,
   isNotificationAccessGranted,
@@ -95,6 +99,8 @@ function PermissionsStep({ onNext }: { onNext: () => void }) {
   const [accessibility, setAccessibility] = useState(false);
   const [notifications, setNotifications] = useState(false);
   const [camera, setCamera] = useState(false);
+  const [reminders, setReminders] = useState(false);
+  const setRemindersEnabled = useQuestStore((s) => s.setRemindersEnabled);
 
   const refresh = useCallback(() => {
     setAccessibility(isAccessibilityServiceEnabled());
@@ -102,6 +108,7 @@ function PermissionsStep({ onNext }: { onNext: () => void }) {
     ImagePicker.getCameraPermissionsAsync()
       .then((r) => setCamera(r.granted))
       .catch(() => {});
+    getNotificationPermission().then(setReminders).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -115,7 +122,7 @@ function PermissionsStep({ onNext }: { onNext: () => void }) {
   return (
     <Card>
       <Text style={styles.kicker}>PERMISSIONS</Text>
-      <Text style={styles.title}>Three things to allow</Text>
+      <Text style={styles.title}>Four things to allow</Text>
       <Text style={styles.bodyDim}>
         Each one opens Android's settings. Come back here and it ticks itself off.
       </Text>
@@ -140,10 +147,23 @@ function PermissionsStep({ onNext }: { onNext: () => void }) {
         why="Only used for photo proof on tasks you mark as needing it."
         onPress={() => ImagePicker.requestCameraPermissionsAsync().then(refresh).catch(() => {})}
       />
+      <PermissionRow
+        granted={reminders}
+        name="Reminders"
+        why="Tells you when a quest timer lands while you are in another app. Scheduled on this phone, never sent anywhere."
+        onPress={() =>
+          requestNotificationPermission()
+            .then((granted) => {
+              setReminders(granted);
+              setRemindersEnabled(granted);
+            })
+            .catch(() => {})
+        }
+      />
 
       <PressableScale style={styles.primaryBtn} onPress={onNext}>
         <Text style={styles.primaryText}>
-          {accessibility && notifications && camera ? 'All set' : 'Continue'}
+          {accessibility && notifications && camera && reminders ? 'All set' : 'Continue'}
         </Text>
       </PressableScale>
       {!isBlockingSupported && (

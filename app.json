@@ -21,6 +21,15 @@
       },
       "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#E9A400"
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

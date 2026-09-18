@@ -12,7 +12,8 @@ import SwipeToDelete from '../components/SwipeToDelete';
 import DraggableList from '../components/DraggableList';
 import TimeSlotSheet from '../components/TimeSlotSheet';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
-import { useQuestStore } from '../state/store';
+import { isBedtimeActive, useQuestStore } from '../state/store';
+import { useNowMinute } from '../state/useClock';
 import { fastestRemaining, questReward } from '../state/selectors';
 import { rankFor } from '../state/ranks';
 import { useAppRegistry } from '../state/useAppRegistry';
@@ -77,6 +78,13 @@ export default function TodayScreen() {
   const booked = bookedMinutes(quests);
   const editing = quests.find((q) => q.id === editingTimeId) ?? null;
 
+  const nowMin = useNowMinute();
+  const bedtimeEnabled = useQuestStore((s) => s.bedtimeEnabled);
+  const bedtimeStartMin = useQuestStore((s) => s.bedtimeStartMin);
+  const bedtimeWakeMin = useQuestStore((s) => s.bedtimeWakeMin);
+  const asleep = isBedtimeActive({ bedtimeEnabled, bedtimeStartMin, bedtimeWakeMin });
+  const inWindow = nowMin >= dayWindow.startMin && nowMin <= dayWindow.endMin;
+
   return (
     <>
       <Animated.View style={spinStyle}>
@@ -121,12 +129,30 @@ export default function TodayScreen() {
               {doneCount}/{quests.length} DONE
             </Text>
           </View>
-          <Text style={styles.listSubtitle}>
-            {windowLabel(dayWindow)} · {formatDuration(booked)} BOOKED
-            {quests.length > 1 ? ' · HOLD TO MOVE' : ''}
-          </Text>
+          <View style={styles.listHeaderRow}>
+            <Text style={styles.listSubtitle}>
+              {windowLabel(dayWindow)} · {formatDuration(booked)} BOOKED
+              {quests.length > 1 ? ' · HOLD TO MOVE' : ''}
+            </Text>
+            {!asleep && inWindow && (
+              <View style={styles.nowChip}>
+                <View style={styles.nowDot} />
+                <Text style={styles.nowChipText}>{formatSlotShort(nowMin)}</Text>
+              </View>
+            )}
+          </View>
         </View>
         <ScrollView contentContainerStyle={styles.listContent}>
+          {asleep && (
+            <View style={styles.bedtime}>
+              <Text style={styles.bedtimeTitle}>It's bed time</Text>
+              <Text style={styles.bedtimeBody}>
+                Come back tomorrow to start your next quest. Everything locked stays shut until{' '}
+                {formatSlot(bedtimeWakeMin)}.
+              </Text>
+            </View>
+          )}
+
           <DraggableList
             data={schedule}
             rowHeight={ROW_H}
@@ -138,7 +164,13 @@ export default function TodayScreen() {
                 <QuestRow
                   quest={q}
                   clashes={overlaps(q, quests)}
-                  onStart={() => startQuest(q.id)}
+                  isNow={!asleep && nowMin >= q.startMin && nowMin < q.startMin + q.mins}
+                  asleep={asleep}
+                  onStart={() =>
+                    asleep
+                      ? flash("It's bed time — come back tomorrow.")
+                      : startQuest(q.id)
+                  }
                   onEditTime={() => openTimeEditor(q.id)}
                   onClaimed={() => flash('Already claimed today.')}
                 />
@@ -182,21 +214,34 @@ export default function TodayScreen() {
 function QuestRow({
   quest,
   clashes,
+  isNow,
+  asleep,
   onStart,
   onEditTime,
   onClaimed,
 }: {
   quest: Quest;
   clashes: boolean;
+  /** The clock is inside this quest's block right now. */
+  isNow: boolean;
+  asleep: boolean;
   onStart: () => void;
   onEditTime: () => void;
   onClaimed: () => void;
 }) {
   const done = quest.done;
+  const live = isNow && !done;
   return (
-    <View style={styles.questRow}>
+    <View style={[styles.questRow, live && styles.questRowNow]}>
+      {live && <View style={styles.nowEdge} />}
       <Pressable style={styles.timeCol} onPress={onEditTime} hitSlop={6}>
-        <Text style={[styles.timeText, done && { color: inkAlpha(0.35) }]}>
+        <Text
+          style={[
+            styles.timeText,
+            done && { color: inkAlpha(0.35) },
+            live && { color: colors.ochreDeep },
+          ]}
+        >
           {formatSlotShort(quest.startMin)}
         </Text>
         <Text style={styles.timeMins}>{quest.mins}m</Text>
@@ -214,8 +259,11 @@ function QuestRow({
         >
           {quest.name}
         </Text>
-        <Text style={[styles.questMeta, clashes && !done && { color: colors.ochreDeep }]} numberOfLines={1}>
-          {clashes && !done ? `OVERLAPS · ${questReward(quest)}` : questReward(quest)}
+        <Text
+          style={[styles.questMeta, ((clashes && !done) || live) && { color: colors.ochreDeep }]}
+          numberOfLines={1}
+        >
+          {live ? `NOW · ${questReward(quest)}` : clashes && !done ? `OVERLAPS · ${questReward(quest)}` : questReward(quest)}
         </Text>
       </View>
 
@@ -224,13 +272,15 @@ function QuestRow({
         style={[
           styles.questBtn,
           {
-            backgroundColor: done ? 'transparent' : colors.ochre,
-            borderColor: done ? inkAlpha(0.16) : inkAlpha(0.25),
+            backgroundColor: done || asleep ? 'transparent' : colors.ochre,
+            borderColor: done || asleep ? inkAlpha(0.16) : inkAlpha(0.25),
           },
         ]}
       >
-        <Text style={[styles.questBtnText, { color: done ? inkAlpha(0.42) : colors.ink }]}>
-          {done ? 'Claimed' : 'Start'}
+        <Text
+          style={[styles.questBtnText, { color: done || asleep ? inkAlpha(0.42) : colors.ink }]}
+        >
+          {done ? 'Claimed' : asleep ? 'Bed' : 'Start'}
         </Text>
       </PressableScale>
     </View>
@@ -265,8 +315,46 @@ const styles = StyleSheet.create({
   listHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listTitle: { fontFamily: fonts.bodyExtra, fontSize: 14, color: colors.ink },
   listCount: { fontFamily: fonts.mono, fontSize: 10, color: inkAlpha(0.52) },
-  listSubtitle: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 1.3, color: inkAlpha(0.45), marginTop: 5 },
+  listSubtitle: {
+    flex: 1,
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.3,
+    color: inkAlpha(0.45),
+    marginTop: 5,
+  },
+  nowChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(233,164,0,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(233,164,0,0.45)',
+  },
+  nowDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.ochreDeep },
+  nowChipText: { fontFamily: fonts.mono, fontSize: 9, color: colors.ochreDeep },
   listContent: { padding: 11, paddingTop: 10 },
+
+  bedtime: {
+    padding: 13,
+    marginBottom: 11,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(28,26,22,0.9)',
+    borderWidth: 1,
+    borderColor: colors.blockBorder,
+  },
+  bedtimeTitle: { fontFamily: fonts.bodyExtra, fontSize: 14, color: colors.ochre },
+  bedtimeBody: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: 'rgba(253,248,232,0.78)',
+    marginTop: 5,
+  },
 
   questRow: {
     height: ROW_CONTENT_H,
@@ -279,6 +367,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.glassCard,
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
+    overflow: 'hidden',
+  },
+  questRowNow: { backgroundColor: 'rgba(253,244,219,0.92)', borderColor: 'rgba(233,164,0,0.5)' },
+  nowEdge: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: colors.ochre,
   },
   timeCol: { width: 46, alignItems: 'center' },
   timeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.ink },

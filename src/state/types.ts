@@ -16,7 +16,10 @@ export type Quest = {
 export type Offer = {
   packageName: string;
   label: string;
+  /** Terse duration, for toasts: "30 min". */
   tierLabel: string;
+  /** What the store tile shows: "30 mins of use". */
+  tierUseLabel: string;
   mins: number;
   cost: number;
 };

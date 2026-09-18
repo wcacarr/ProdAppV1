@@ -84,6 +84,7 @@ export default function BlockScreen() {
                 packageName: blockPackage,
                 label,
                 tierLabel: cheapest.label,
+                tierUseLabel: cheapest.useLabel,
                 mins: cheapest.mins,
                 cost: cheapest.cost,
               })

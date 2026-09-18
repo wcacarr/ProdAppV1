@@ -45,12 +45,16 @@ export default function RootScreen() {
   // call or a text would otherwise come back with its countdown stopped where
   // it was. The clock is the source of truth; catch up to it on resume.
   const syncFocus = useQuestStore((s) => s.syncFocus);
+  // Reminders are laid down from whatever is true when the app is open, so
+  // going to the background is also the moment to leave the right ones behind.
+  const syncReminders = useQuestStore((s) => s.syncReminders);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') syncFocus();
+      syncReminders();
     });
     return () => sub.remove();
-  }, [syncFocus]);
+  }, [syncFocus, syncReminders]);
 
   return (
     <View style={styles.root}>
