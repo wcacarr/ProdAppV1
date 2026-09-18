@@ -102,8 +102,8 @@ html,body{margin:0;background:${PAPER}}
     <svg class="mark" viewBox="152 205 720 585">${mark()}</svg>
     <div class="words">
       <div class="name">TASUKU</div>
-      <div class="tag">Earn your screen time.</div>
-      <div class="sub">Lock the apps that eat your day.<br/>Finish what matters to open them.</div>
+      <div class="tag">First the task. Then the phone.</div>
+      <div class="sub">Lock the apps you lose hours to.<br/>Do something, and they open.</div>
     </div>
   </div>
 </div></body></html>`;
