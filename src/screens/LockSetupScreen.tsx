@@ -108,7 +108,7 @@ export default function LockSetupScreen() {
             body={
               enforcementOn
                 ? 'Opening a locked app sends you home.'
-                : 'Tasuku needs accessibility access to notice which app opened.'
+                : "Tap Turn on, then find Tasuku in the list and switch it on. On Samsung it's under Installed apps. Come back here and this ticks itself."
             }
             onPress={openAccessibilitySettings}
             escapeLabel="Greyed out in settings?"

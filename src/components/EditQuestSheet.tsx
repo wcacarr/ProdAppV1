@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -67,7 +68,13 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={dismiss} />
       </Animated.View>
 
-      <KeyboardAvoidingView behavior="padding" style={styles.outer} pointerEvents="box-none">
+      {/* Android resizes the window for the keyboard already; padding on top
+          of that shunts the sheet off the screen. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.outer}
+        pointerEvents="box-none"
+      >
         <Animated.View
           entering={SlideInDown.duration(240).easing(Easing.out(Easing.cubic))}
           exiting={SlideOutDown.duration(180).easing(Easing.in(Easing.cubic))}

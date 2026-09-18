@@ -130,7 +130,7 @@ function PermissionsStep({ onNext }: { onNext: () => void }) {
       <PermissionRow
         granted={accessibility}
         name="App locking"
-        why="Lets Tasuku notice when a locked app opens and send you home."
+        why="Lets Tasuku notice when a locked app opens and send you home. Tap Allow, find Tasuku in the list — under Installed apps on Samsung — and switch it on."
         onPress={openAccessibilitySettings}
         escapeHatch={{ label: 'Greyed out?', onPress: openAppInfo }}
         escapeHint="Android blocks this for apps installed outside the Play Store. Open App info → ⋮ (top right) → Allow restricted settings, then come back."

@@ -381,8 +381,11 @@ export const useQuestStore = create<QuestState>()(
     });
     runFocusTimer(set, get);
     // JS is frozen in the background, so the only thing that can tell you the
-    // timer landed while you were in a phone call is the OS.
-    if (get().remindersEnabled) void scheduleQuestEnd(q.name, endAt);
+    // timer landed while you were in a phone call is the OS. Not gated on the
+    // reminders setting: that governs unprompted nudges, whereas this is the
+    // result of something you just started. It no-ops if the permission was
+    // never granted.
+    void scheduleQuestEnd(q.name, endAt);
   },
 
   // The countdown is always derived from focusEndAt rather than counted down,

@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -122,7 +123,10 @@ export default function AddQuestSheet() {
         <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={dismiss} />
       </Animated.View>
       <KeyboardAvoidingView
-        behavior="padding"
+        // Android already shrinks the window (softwareKeyboardLayoutMode:
+        // "resize"), so adding padding on top of that pushed the sheet's own
+        // name field up off the screen.
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.sheetOuter}
         pointerEvents="box-none"
       >
@@ -161,7 +165,6 @@ export default function AddQuestSheet() {
             <TextInput
               value={draftName}
               onChangeText={setDraftName}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
               placeholder="e.g. 20 minutes of guitar"
               placeholderTextColor={inkAlpha(0.4)}
               style={styles.input}

@@ -10,6 +10,7 @@ import PhotoProofPrompt from '../components/PhotoProofPrompt';
 import ScreenTransition from '../components/ScreenTransition';
 import ExpandedPlayer from '../components/ExpandedPlayer';
 import RunningQuestPill from '../components/RunningQuestPill';
+import QuestSheets from '../components/QuestSheets';
 import Toast from '../components/Toast';
 import TodayScreen from './TodayScreen';
 import StoreScreen from './StoreScreen';
@@ -105,6 +106,7 @@ export default function RootScreen() {
       </SafeAreaView>
       {playerExpanded && <ExpandedPlayer />}
       {sheetOpen && <AddQuestSheet />}
+      <QuestSheets />
       <PhotoProofPrompt />
       <Toast />
     </View>

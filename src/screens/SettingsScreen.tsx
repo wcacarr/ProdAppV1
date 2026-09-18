@@ -61,6 +61,10 @@ export default function SettingsScreen() {
     getNotificationPermission().then(setNotificationsGranted).catch(() => {});
   }, [remindersEnabled]);
 
+  const grantNotifications = useCallback(async () => {
+    setNotificationsGranted(await requestNotificationPermission());
+  }, []);
+
   // Asking only when the toggle goes on keeps the permission prompt tied to a
   // thing the user just asked for.
   const toggleReminders = useCallback(async () => {
@@ -128,21 +132,25 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionLabel}>REMINDERS</Text>
+        <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+        {!notificationsGranted && (
+          <PressableScale style={styles.permCard} onPress={grantNotifications} scaleTo={0.985}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Turn notifications on</Text>
+              <Text style={styles.rowBody}>
+                Android hasn't allowed them yet, so nothing will reach you — including the alert when
+                a quest timer finishes while you're in another app.
+              </Text>
+            </View>
+            <Text style={styles.permCta}>Allow</Text>
+          </PressableScale>
+        )}
         <Toggle
           on={remindersEnabled}
-          title="Nudges and timer alerts"
-          body="Tells you when a quest timer lands while you are elsewhere, and once a day if nothing has been claimed. Scheduled on this phone — nothing is sent anywhere."
+          title="Daily nudges"
+          body="A reminder if nothing has been claimed today, and a gentler one after a few days away. Timer alerts don't need this — they come whenever notifications are allowed."
           onToggle={toggleReminders}
         />
-        {remindersEnabled && !notificationsGranted && (
-          <View style={[styles.card, { marginTop: 8 }]}>
-            <Text style={styles.cardFoot}>
-              Android has not granted notification permission, so nothing will appear. Turn this off
-              and on again to ask, or allow it in the phone's app settings.
-            </Text>
-          </View>
-        )}
 
         <Text style={styles.sectionLabel}>SOUND</Text>
         <Toggle
@@ -326,6 +334,27 @@ const styles = StyleSheet.create({
     borderColor: inkAlpha(0.13),
   },
   cardFoot: { fontFamily: fonts.mono, fontSize: 9.5, lineHeight: 15, color: inkAlpha(0.5), marginTop: 10 },
+  permCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(233,164,0,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(233,164,0,0.5)',
+  },
+  permCta: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: colors.ink,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: colors.ochre,
+    overflow: 'hidden',
+  },
   timePair: { flexDirection: 'row', gap: 8, marginTop: 11 },
   timeField: {
     flex: 1,

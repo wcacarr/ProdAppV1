@@ -10,8 +10,6 @@ import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
 import SwipeToDelete from '../components/SwipeToDelete';
 import DraggableList from '../components/DraggableList';
-import TimeSlotSheet from '../components/TimeSlotSheet';
-import EditQuestSheet from '../components/EditQuestSheet';
 import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { isBedtimeActive, useQuestStore } from '../state/store';
 import { useNowMinute } from '../state/useClock';
@@ -25,7 +23,6 @@ import {
   formatSlot,
   formatSlotShort,
   overlaps,
-  slotChoices,
   sortedByStart,
   windowLabel,
 } from '../state/schedule';
@@ -44,10 +41,7 @@ export default function TodayScreen() {
   const openSheet = useQuestStore((s) => s.openSheet);
   const deleteQuest = useQuestStore((s) => s.deleteQuest);
   const reorderQuests = useQuestStore((s) => s.reorderQuests);
-  const editingTimeId = useQuestStore((s) => s.editingTimeId);
   const openTimeEditor = useQuestStore((s) => s.openTimeEditor);
-  const closeTimeEditor = useQuestStore((s) => s.closeTimeEditor);
-  const setQuestStart = useQuestStore((s) => s.setQuestStart);
   const dayWindow = useQuestStore((s) => s.dayWindow);
   const flash = useQuestStore((s) => s.flash);
 
@@ -73,15 +67,11 @@ export default function TodayScreen() {
   const { lockedApps } = useAppRegistry();
   const lockedLabel = lockedApps[0]?.label ?? null;
   const schedule = useMemo(() => sortedByStart(quests), [quests]);
-  const slots = useMemo(() => slotChoices(dayWindow), [dayWindow]);
   const remaining = quests.filter((q) => !q.done);
   const fastest = fastestRemaining(quests);
   const doneCount = quests.filter((q) => q.done).length;
   const booked = bookedMinutes(quests);
-  const editing = quests.find((q) => q.id === editingTimeId) ?? null;
-  const editingQuestId = useQuestStore((s) => s.editingQuestId);
   const openQuestEditor = useQuestStore((s) => s.openQuestEditor);
-  const editingQuest = quests.find((q) => q.id === editingQuestId) ?? null;
 
   const nowMin = useNowMinute();
   const bedtimeEnabled = useQuestStore((s) => s.bedtimeEnabled);
@@ -205,18 +195,6 @@ export default function TodayScreen() {
         </ScrollView>
       </GlassPane>
 
-      {editingQuest && <EditQuestSheet quest={editingQuest} />}
-
-      {editing && (
-        <TimeSlotSheet
-          title={editing.name}
-          subtitle={`${editing.mins} MIN · CURRENTLY ${formatSlot(editing.startMin).toUpperCase()}`}
-          value={editing.startMin}
-          slots={slots}
-          onPick={(startMin) => setQuestStart(editing.id, startMin)}
-          onClose={closeTimeEditor}
-        />
-      )}
     </>
   );
 }
