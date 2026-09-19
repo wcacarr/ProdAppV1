@@ -39,9 +39,11 @@ export default function RootScreen() {
   const playerExpanded = useQuestStore((s) => s.playerExpanded);
   const showDock = DOCKED_SCREENS.includes(screen);
 
-  const { now } = useNowPlaying(4000);
+  const { now, ready } = useNowPlaying(4000);
   const musicEnabled = useQuestStore((s) => s.musicEnabled);
-  useAmbientBed(!!now?.isPlaying, musicEnabled);
+  // Held until the first poll answers. Starting the drone before we know what
+  // the phone is doing is what paused people's podcasts on launch.
+  useAmbientBed(!!now?.isPlaying, musicEnabled && ready);
 
   // Android freezes JS timers in the background, so a quest interrupted by a
   // call or a text would otherwise come back with its countdown stopped where

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
 import { safePlay } from '../sound/safePlay';
+import { configureAudioMode } from '../sound/audioMode';
 
 const VOLUME = 0.22;
 
@@ -18,6 +19,7 @@ export function useAmbientBed(mediaPlaying: boolean, enabled = true) {
 
   useEffect(() => {
     try {
+      configureAudioMode();
       const player = createAudioPlayer(require('../../assets/sounds/ambient.mp3'));
       player.loop = true;
       player.volume = VOLUME;

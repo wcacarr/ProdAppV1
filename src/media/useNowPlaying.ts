@@ -17,23 +17,29 @@ export type MediaStatus = 'unsupported' | 'needs_permission' | 'idle' | 'active'
 export function useNowPlaying(pollMs = 2000) {
   const [now, setNow] = useState<DeviceNowPlaying | null>(null);
   const [status, setStatus] = useState<MediaStatus>('unsupported');
+  // False until the first poll returns. Callers that make noise wait for this,
+  // so nothing starts playing before we know whether the phone is already busy.
+  const [ready, setReady] = useState(false);
   const [, forceTick] = useState(0);
   const fetchedAtRef = useRef(Date.now());
 
   const poll = useCallback(() => {
     if (!isMediaSupported) {
       setStatus('unsupported');
+      setReady(true);
       return;
     }
     if (!isNotificationAccessGranted()) {
       setStatus('needs_permission');
       setNow(null);
+      setReady(true);
       return;
     }
     const playing = getDeviceNowPlaying();
     fetchedAtRef.current = Date.now();
     setNow(playing);
     setStatus(playing?.isPlaying ? 'active' : 'idle');
+    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -88,5 +94,5 @@ export function useNowPlaying(pollMs = 2000) {
     setTimeout(poll, 500);
   };
 
-  return { now, status, liveProgressMs, togglePlay, next, previous, seekTo };
+  return { now, status, ready, liveProgressMs, togglePlay, next, previous, seekTo };
 }
