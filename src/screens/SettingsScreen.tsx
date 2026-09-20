@@ -26,6 +26,11 @@ import {
   waterTimes,
 } from '../state/hydration';
 import { isWaterQuest } from '../state/types';
+import {
+  MediaDiagnostics,
+  getMediaDiagnostics,
+  openNotificationAccessSettings,
+} from '../../modules/questlock-blocker';
 
 /** Which time is being edited, if any. */
 type Editing = 'dayStart' | 'dayEnd' | 'bedtime' | 'wake' | null;
@@ -50,6 +55,14 @@ export default function SettingsScreen() {
     () => waterTimes(waterGlasses, dayWindow),
     [waterGlasses, dayWindow]
   );
+
+  const [media, setMedia] = useState<MediaDiagnostics>({
+    granted: false,
+    sessions: [],
+    error: '',
+  });
+  const refreshMedia = useCallback(() => setMedia(getMediaDiagnostics()), []);
+  useEffect(refreshMedia, [refreshMedia]);
 
   const remindersEnabled = useQuestStore((s) => s.remindersEnabled);
   const setRemindersEnabled = useQuestStore((s) => s.setRemindersEnabled);
@@ -208,6 +221,66 @@ export default function SettingsScreen() {
           body="A reminder if nothing has been claimed today, and a gentler one after a few days away. Timer alerts don't need this — they come whenever notifications are allowed."
           onToggle={toggleReminders}
         />
+
+        <Text style={styles.sectionLabel}>MEDIA</Text>
+        <View style={styles.card}>
+          <Text style={styles.rowTitle}>What the phone is reporting</Text>
+          <Text style={styles.rowBody}>
+            Tasuku doesn't talk to Spotify or anything else directly — it reads the media session
+            Android itself holds, the one your lock screen controls. Free accounts work the same as
+            paid ones. If the dock is empty, this is the list it was given.
+          </Text>
+
+          {!media.granted && (
+            <Text style={[styles.cardFoot, { color: colors.ochreDeep }]}>
+              Notification access is off, so Android hands over nothing.
+            </Text>
+          )}
+          {!!media.error && (
+            <Text style={[styles.cardFoot, { color: '#963626' }]}>{media.error}</Text>
+          )}
+          {media.granted && !media.error && media.sessions.length === 0 && (
+            <Text style={styles.cardFoot}>
+              Access is on and Android returned no sessions at all. Start something playing and tap
+              refresh — if it stays empty with music audibly playing, the listener isn't bound.
+            </Text>
+          )}
+
+          {media.sessions.map((s) => (
+            <View key={s.packageName} style={styles.sessionRow}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.sessionApp} numberOfLines={1}>
+                  {s.appName || s.packageName}
+                </Text>
+                <Text style={styles.sessionMeta} numberOfLines={1}>
+                  {s.state.toUpperCase()}
+                  {s.title ? ` · ${s.title}` : ' · NO TRACK INFO'}
+                </Text>
+              </View>
+              <Text style={styles.sessionScore}>{s.score}</Text>
+            </View>
+          ))}
+
+          <View style={styles.mediaBtns}>
+            <PressableScale style={styles.mediaBtn} onPress={refreshMedia} scaleTo={0.97}>
+              <Text style={styles.mediaBtnText}>Refresh</Text>
+            </PressableScale>
+            <PressableScale
+              style={styles.mediaBtn}
+              onPress={() => {
+                openNotificationAccessSettings();
+                setTimeout(refreshMedia, 1200);
+              }}
+              scaleTo={0.97}
+            >
+              <Text style={styles.mediaBtnText}>Notification access</Text>
+            </PressableScale>
+          </View>
+          <Text style={styles.cardFoot}>
+            The highest score is the one the dock shows. If Spotify is playing and isn't in this
+            list, turning notification access off and back on rebinds it.
+          </Text>
+        </View>
 
         <Text style={styles.sectionLabel}>SOUND</Text>
         <Toggle
@@ -422,6 +495,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ochre,
     overflow: 'hidden',
   },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 9,
+    paddingVertical: 9,
+    paddingHorizontal: 11,
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255,252,242,.85)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.14),
+  },
+  sessionApp: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.ink },
+  sessionMeta: { fontFamily: fonts.mono, fontSize: 9, color: inkAlpha(0.5), marginTop: 3 },
+  sessionScore: { fontFamily: fonts.mono, fontSize: 11, color: colors.ochreDeep },
+  mediaBtns: { flexDirection: 'row', gap: 8, marginTop: 11 },
+  mediaBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.2),
+    backgroundColor: 'rgba(255,252,242,.85)',
+  },
+  mediaBtnText: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.ink },
+
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepperValue: { fontFamily: fonts.bodyExtra, fontSize: 22, color: colors.ink, marginTop: 3 },
   stepBtn: {

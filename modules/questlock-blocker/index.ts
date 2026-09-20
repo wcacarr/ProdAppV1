@@ -43,10 +43,30 @@ type BlockerNative = {
   isBedtimeNow: () => boolean;
 };
 
+/** One media session the phone is currently holding. */
+export type MediaSessionInfo = {
+  packageName: string;
+  /** The launcher label — "Spotify" — so the list reads like the app drawer. */
+  appName: string;
+  title: string;
+  /** "playing" / "paused" / "buffering" / "stopped" / "none" / "no state". */
+  state: string;
+  /** How the picker ranked it. The highest is the one the dock shows. */
+  score: number;
+};
+
+export type MediaDiagnostics = {
+  granted: boolean;
+  sessions: MediaSessionInfo[];
+  /** Empty when the list came back cleanly. */
+  error: string;
+};
+
 type MediaNative = {
   isNotificationAccessGranted: () => boolean;
   openNotificationAccessSettings: () => void;
   getNowPlaying: () => DeviceNowPlaying | null;
+  getMediaDiagnostics: () => MediaDiagnostics;
   seekTo: (positionMs: number) => boolean;
   play: () => boolean;
   pause: () => boolean;
@@ -88,6 +108,9 @@ export const isBedtimeNow = () => blocker?.isBedtimeNow() ?? false;
 export const isNotificationAccessGranted = () => media?.isNotificationAccessGranted() ?? false;
 export const openNotificationAccessSettings = () => media?.openNotificationAccessSettings();
 export const getDeviceNowPlaying = (): DeviceNowPlaying | null => media?.getNowPlaying() ?? null;
+/** Every session the phone reports, for working out why the dock is empty. */
+export const getMediaDiagnostics = (): MediaDiagnostics =>
+  media?.getMediaDiagnostics() ?? { granted: false, sessions: [], error: 'No native module' };
 export const mediaSeekTo = (positionMs: number) => media?.seekTo(positionMs) ?? false;
 export const mediaPlay = () => media?.play() ?? false;
 export const mediaPause = () => media?.pause() ?? false;

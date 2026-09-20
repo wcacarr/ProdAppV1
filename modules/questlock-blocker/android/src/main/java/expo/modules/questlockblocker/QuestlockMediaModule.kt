@@ -36,6 +36,13 @@ class QuestlockMediaModule : Module() {
       nowPlaying()
     }
 
+    // Everything the phone will tell us about who is holding a media session.
+    // Without this, "nothing playing" covers three different faults and there
+    // is no way to tell them apart from the outside.
+    Function("getMediaDiagnostics") {
+      diagnostics()
+    }
+
     Function("seekTo") { positionMs: Double ->
       seek(positionMs)
     }
@@ -187,6 +194,57 @@ class QuestlockMediaModule : Module() {
       points += 1
     }
     return points
+  }
+
+  /**
+   * "Nothing playing" can mean the toggle is off, the toggle is on but Android
+   * never bound the listener (which throws SecurityException and is common
+   * after an install-over-the-top), or the list came back without the app the
+   * user can hear. Each needs a different fix, so each is reported separately.
+   */
+  private fun diagnostics(): Map<String, Any?> {
+    val rows = ArrayList<Map<String, Any?>>()
+    var error = ""
+    try {
+      val service = context.getSystemService(Context.MEDIA_SESSION_SERVICE)
+      if (service !is MediaSessionManager) {
+        error = "This device has no media session service."
+      } else {
+        val component = ComponentName(context, QuestlockNotificationListener::class.java)
+        for (session in service.getActiveSessions(component)) {
+          val row = HashMap<String, Any?>()
+          row["packageName"] = session.packageName
+          row["appName"] = appLabel(session.packageName)
+          row["title"] = readTitle(session.metadata)
+          row["state"] = stateName(session.playbackState?.state)
+          row["score"] = score(session)
+          rows.add(row)
+        }
+      }
+    } catch (e: SecurityException) {
+      error = "Android refused the session list. Notification access reads as on, " +
+        "but the listener is not bound — turn it off and on again."
+    } catch (e: Throwable) {
+      error = e.javaClass.simpleName + ": " + (e.message ?: "no message")
+    }
+
+    val out = HashMap<String, Any?>()
+    out["granted"] = notificationAccessGranted()
+    out["sessions"] = rows
+    out["error"] = error
+    return out
+  }
+
+  private fun stateName(state: Int?): String {
+    return when (state) {
+      PlaybackState.STATE_PLAYING -> "playing"
+      PlaybackState.STATE_PAUSED -> "paused"
+      PlaybackState.STATE_BUFFERING -> "buffering"
+      PlaybackState.STATE_STOPPED -> "stopped"
+      PlaybackState.STATE_NONE -> "none"
+      null -> "no state"
+      else -> "state $state"
+    }
   }
 
   private fun sendTransport(action: String): Boolean {
