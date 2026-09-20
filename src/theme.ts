@@ -53,6 +53,16 @@ export const fonts = {
 
 export const xpFor = (mins: number) => Math.max(10, Math.round(mins * 3));
 
+/** "45s", "2m", "1m 30s", "40m" — durations are no longer whole minutes. */
+export function durationLabel(mins: number) {
+  const total = Math.max(0, Math.round(mins * 60));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  if (!m) return `${s}s`;
+  if (!s) return `${m}m`;
+  return `${m}m ${s}s`;
+}
+
 export const mmss = (t: number) => {
   const s = Math.max(0, Math.round(t));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;

@@ -23,6 +23,7 @@ import SettingsScreen from './SettingsScreen';
 import { useQuestStore } from '../state/store';
 import { useNowPlaying } from '../media/useNowPlaying';
 import { useAmbientBed } from '../media/useAmbientBed';
+import { clearDeliveredNotifications } from '../notify/notifications';
 import { colors } from '../theme';
 
 // Springy reflow so the pane growing and the nav bar sliding down read as one
@@ -56,10 +57,14 @@ export default function RootScreen() {
   // rollover is checked before anything else looks at the quest list.
   const rollOverIfNewDay = useQuestStore((s) => s.rollOverIfNewDay);
   useEffect(() => {
+    // Opening the app is the moment to clear the launcher badge; Android keeps
+    // the count until something actively dismisses it.
+    void clearDeliveredNotifications();
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
         rollOverIfNewDay();
         syncFocus();
+        void clearDeliveredNotifications();
       }
       syncReminders();
     });

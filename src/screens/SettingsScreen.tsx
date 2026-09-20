@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Application from 'expo-application';
 import GlassPane from '../components/GlassPane';
@@ -15,9 +15,17 @@ import {
   MIN_WINDOW_MIN,
   allDaySlots,
   formatSlot,
+  formatSlotShort,
   isWithinNightly,
   minutesOfDay,
 } from '../state/schedule';
+import {
+  MAX_GLASSES,
+  MIN_GLASSES,
+  WATER_XP,
+  waterTimes,
+} from '../state/hydration';
+import { isWaterQuest } from '../state/types';
 
 /** Which time is being edited, if any. */
 type Editing = 'dayStart' | 'dayEnd' | 'bedtime' | 'wake' | null;
@@ -33,7 +41,15 @@ export default function SettingsScreen() {
   const bedtimeStartMin = useQuestStore((s) => s.bedtimeStartMin);
   const bedtimeWakeMin = useQuestStore((s) => s.bedtimeWakeMin);
   const setBedtime = useQuestStore((s) => s.setBedtime);
+  const waterEnabled = useQuestStore((s) => s.waterEnabled);
+  const waterGlasses = useQuestStore((s) => s.waterGlasses);
+  const setWater = useQuestStore((s) => s.setWater);
   const rank = rankFor(lifetime);
+
+  const glassTimes = useMemo(
+    () => waterTimes(waterGlasses, dayWindow),
+    [waterGlasses, dayWindow]
+  );
 
   const remindersEnabled = useQuestStore((s) => s.remindersEnabled);
   const setRemindersEnabled = useQuestStore((s) => s.setRemindersEnabled);
@@ -112,6 +128,46 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
+        <Text style={styles.sectionLabel}>WATER</Text>
+        <Toggle
+          on={waterEnabled}
+          title="Glasses through the day"
+          body={`Drops a glass of water onto the calendar at even intervals and nudges you when each one is due. Tapping it ticks it off there and then — worth +${WATER_XP} XP, which is meant to be pocket change.`}
+          onToggle={() => setWater({ enabled: !waterEnabled })}
+        />
+        {waterEnabled && (
+          <View style={[styles.card, { marginTop: 8 }]}>
+            <View style={styles.stepperRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.timeFieldLabel}>GLASSES A DAY</Text>
+                <Text style={styles.stepperValue}>{waterGlasses}</Text>
+              </View>
+              <PressableScale
+                style={[styles.stepBtn, waterGlasses <= MIN_GLASSES && styles.stepBtnOff]}
+                onPress={() => setWater({ glasses: waterGlasses - 1 })}
+                scaleTo={0.93}
+              >
+                <Text style={styles.stepBtnText}>−</Text>
+              </PressableScale>
+              <PressableScale
+                style={[styles.stepBtn, waterGlasses >= MAX_GLASSES && styles.stepBtnOff]}
+                onPress={() => setWater({ glasses: waterGlasses + 1 })}
+                scaleTo={0.93}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </PressableScale>
+            </View>
+            <Text style={styles.cardFoot}>
+              {glassTimes.map((m) => formatSlotShort(m)).join(' · ')}
+            </Text>
+            <Text style={styles.rowBody}>
+              The NHS asks for six to eight glasses of fluid a day; eight is the middle of that and
+              the default here. The last one lands an hour before your day ends, so it isn't drunk
+              on the way to bed.
+            </Text>
+          </View>
+        )}
+
         <Text style={styles.sectionLabel}>BEDTIME</Text>
         <Toggle
           on={bedtimeEnabled}
@@ -165,7 +221,8 @@ export default function SettingsScreen() {
         <View style={styles.statRow}>
           <Stat label="RANK" value={rank.name} />
           <Stat label="LIFETIME XP" value={`${lifetime}`} />
-          <Stat label="QUESTS" value={`${quests.length}`} />
+          {/* Glasses of water are not quests you wrote, so they don't pad this. */}
+          <Stat label="QUESTS" value={`${quests.filter((q) => !isWaterQuest(q)).length}`} />
         </View>
 
         <Text style={styles.sectionLabel}>DATA</Text>
@@ -365,6 +422,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ochre,
     overflow: 'hidden',
   },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepperValue: { fontFamily: fonts.bodyExtra, fontSize: 22, color: colors.ink, marginTop: 3 },
+  stepBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,252,242,.85)',
+    borderWidth: 1,
+    borderColor: inkAlpha(0.18),
+  },
+  stepBtnOff: { opacity: 0.35 },
+  stepBtnText: { fontFamily: fonts.bodyExtra, fontSize: 18, color: colors.ink, marginTop: -2 },
   timePair: { flexDirection: 'row', gap: 8, marginTop: 11 },
   timeField: {
     flex: 1,

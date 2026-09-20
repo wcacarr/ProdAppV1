@@ -10,14 +10,14 @@ import GlassPane from '../components/GlassPane';
 import PressableScale from '../components/PressableScale';
 import SwipeToDelete from '../components/SwipeToDelete';
 import DraggableList from '../components/DraggableList';
-import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
+import { colors, durationLabel, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { isBedtimeActive, useQuestStore } from '../state/store';
 import { useNowMinute } from '../state/useClock';
 import { weekdayName } from '../state/day';
 import { fastestRemaining, questReward } from '../state/selectors';
 import { rankFor } from '../state/ranks';
 import { useAppRegistry } from '../state/useAppRegistry';
-import { Quest } from '../state/types';
+import { Quest, isWaterQuest } from '../state/types';
 import {
   bookedMinutes,
   formatSlot,
@@ -164,12 +164,16 @@ export default function TodayScreen() {
                   isNow={!asleep && nowMin >= q.startMin && nowMin < q.startMin + q.mins}
                   asleep={asleep}
                   onStart={() =>
-                    asleep
+                    asleep && !isWaterQuest(q)
                       ? flash("It's bed time — come back tomorrow.")
                       : startQuest(q.id)
                   }
                   onEditTime={() => openTimeEditor(q.id)}
-                  onEdit={() => openQuestEditor(q.id)}
+                  onEdit={() =>
+                    isWaterQuest(q)
+                      ? flash('Glasses are set in Settings → Water.')
+                      : openQuestEditor(q.id)
+                  }
                   onClaimed={() => flash('Already claimed today.')}
                 />
               </SwipeToDelete>
@@ -220,6 +224,9 @@ function QuestRow({
   onClaimed: () => void;
 }) {
   const done = quest.done;
+  const water = isWaterQuest(quest);
+  // Nothing about a glass of water waits for morning.
+  const held = asleep && !water;
   const live = isNow && !done;
   return (
     <View style={[styles.questRow, live && styles.questRowNow]}>
@@ -234,7 +241,7 @@ function QuestRow({
         >
           {formatSlotShort(quest.startMin)}
         </Text>
-        <Text style={styles.timeMins}>{quest.mins}m</Text>
+        <Text style={styles.timeMins}>{water ? 'GLASS' : durationLabel(quest.mins)}</Text>
       </Pressable>
 
       <View style={styles.timeRule} />
@@ -264,15 +271,15 @@ function QuestRow({
         style={[
           styles.questBtn,
           {
-            backgroundColor: done || asleep ? 'transparent' : colors.ochre,
-            borderColor: done || asleep ? inkAlpha(0.16) : inkAlpha(0.25),
+            backgroundColor: done || held ? 'transparent' : colors.ochre,
+            borderColor: done || held ? inkAlpha(0.16) : inkAlpha(0.25),
           },
         ]}
       >
         <Text
-          style={[styles.questBtnText, { color: done || asleep ? inkAlpha(0.42) : colors.ink }]}
+          style={[styles.questBtnText, { color: done || held ? inkAlpha(0.42) : colors.ink }]}
         >
-          {done ? 'Claimed' : asleep ? 'Bed' : 'Start'}
+          {done ? (water ? 'Drunk' : 'Claimed') : held ? 'Bed' : water ? 'Drink' : 'Start'}
         </Text>
       </PressableScale>
     </View>

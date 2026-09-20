@@ -18,12 +18,15 @@ import {
   reorderByStart,
 } from './schedule';
 import { Offer, Quest, Reward, Screen } from './types';
+import { questXp } from './selectors';
 import { playDing } from '../sound/ding';
 import {
   cancelQuestEnd,
   cancelReminders,
+  clearDeliveredNotifications,
   rescheduleReminders,
   scheduleQuestEnd,
+  scheduleWaterReminders,
 } from '../notify/notifications';
 import {
   getLockStates,
@@ -33,6 +36,15 @@ import {
 } from '../../modules/questlock-blocker';
 import { dayKey, daysBetween } from './day';
 import { deletePhotos } from './photos';
+import {
+  DEFAULT_GLASSES,
+  MAX_GLASSES,
+  MIN_GLASSES,
+  WATER_XP,
+  isWaterQuest,
+  waterTimes,
+  withWaterQuests,
+} from './hydration';
 
 type QuestState = {
   screen: Screen;
@@ -71,6 +83,8 @@ type QuestState = {
   bedtimeStartMin: number;
   bedtimeWakeMin: number;
   remindersEnabled: boolean;
+  waterEnabled: boolean;
+  waterGlasses: number;
   /** The day the app last saw, so it knows when a new one has started. */
   lastDayKey: string;
 
@@ -80,6 +94,7 @@ type QuestState = {
   setDayWindow: (window: Partial<DayWindow>) => void;
   setBedtime: (next: Partial<{ enabled: boolean; startMin: number; wakeMin: number }>) => void;
   setRemindersEnabled: (on: boolean) => void;
+  setWater: (next: Partial<{ enabled: boolean; glasses: number }>) => void;
   /** Pushes the bedtime window down to the native blocker (boot, rehydrate). */
   syncBedtime: () => void;
   /** Re-lays the pending reminders from current state (foreground, rehydrate). */
@@ -198,6 +213,8 @@ export const useQuestStore = create<QuestState>()(
   bedtimeStartMin: 22 * 60,
   bedtimeWakeMin: 7 * 60,
   remindersEnabled: false,
+  waterEnabled: false,
+  waterGlasses: DEFAULT_GLASSES,
   lastDayKey: dayKey(),
   editingQuestId: null,
 
@@ -213,7 +230,11 @@ export const useQuestStore = create<QuestState>()(
       const startMin = Math.max(0, Math.min(1440 - MIN_WINDOW_MIN, snap(merged.startMin)));
       const endMin = Math.min(1440, Math.max(startMin + MIN_WINDOW_MIN, snap(merged.endMin)));
       const dayWindow = { startMin, endMin };
-      return { dayWindow, quests: refitToWindow(s.quests, dayWindow) };
+      const refitted = refitToWindow(s.quests, dayWindow);
+      return {
+        dayWindow,
+        quests: withWaterQuests(refitted, s.waterEnabled, s.waterGlasses, dayWindow),
+      };
     }),
 
   setBedtime: (next) => {
@@ -236,8 +257,30 @@ export const useQuestStore = create<QuestState>()(
     setNativeBedtime(s.bedtimeEnabled, s.bedtimeStartMin, s.bedtimeWakeMin);
   },
 
+  // Glasses are regenerated rather than edited: the schedule is derived from
+  // the count and the waking window, so anything else would drift.
+  setWater: (next) => {
+    set((s) => {
+      const enabled = next.enabled ?? s.waterEnabled;
+      const glasses = Math.max(
+        MIN_GLASSES,
+        Math.min(MAX_GLASSES, Math.round(next.glasses ?? s.waterGlasses))
+      );
+      return {
+        waterEnabled: enabled,
+        waterGlasses: glasses,
+        quests: withWaterQuests(s.quests, enabled, glasses, s.dayWindow),
+      };
+    });
+    get().syncReminders();
+  },
+
   syncReminders: () => {
     const s = get();
+    void scheduleWaterReminders(
+      s.waterEnabled ? waterTimes(s.waterGlasses, s.dayWindow) : [],
+      s.quests
+    );
     void rescheduleReminders({
       enabled: s.remindersEnabled,
       hasUnfinished: s.quests.some((q) => !q.done),
@@ -287,9 +330,12 @@ export const useQuestStore = create<QuestState>()(
     set({
       lastDayKey: today,
       dayStreak: continued ? s.dayStreak + 1 : 1,
-      quests: s.quests
-        .filter((q) => q.repeat)
-        .map((q) => ({ ...q, done: false, photoUri: undefined })),
+      quests: withWaterQuests(
+        s.quests.filter((q) => q.repeat).map((q) => ({ ...q, done: false, photoUri: undefined })),
+        s.waterEnabled,
+        s.waterGlasses,
+        s.dayWindow
+      ),
       // Nothing in-flight survives a date change.
       activeId: null,
       focusEndAt: null,
@@ -341,6 +387,8 @@ export const useQuestStore = create<QuestState>()(
       bedtimeStartMin: 22 * 60,
       bedtimeWakeMin: 7 * 60,
       remindersEnabled: false,
+      waterEnabled: false,
+      waterGlasses: DEFAULT_GLASSES,
     });
     get().flash('Everything erased.');
   },
@@ -369,6 +417,20 @@ export const useQuestStore = create<QuestState>()(
   startQuest: (id) => {
     const q = get().quests.find((x) => x.id === id);
     if (!q) return;
+
+    // A glass of water is not a task to sit through. Tapping it is the whole
+    // interaction: claim it and get out of the way.
+    if (isWaterQuest(q)) {
+      set((s) => ({
+        quests: s.quests.map((x) => (x.id === q.id ? { ...x, done: true } : x)),
+        balance: s.balance + WATER_XP,
+        lifetime: s.lifetime + WATER_XP,
+      }));
+      get().flash(`Glass down. +${WATER_XP} XP`);
+      get().syncReminders();
+      return;
+    }
+
     const totalSecs = q.mins * 60;
     const endAt = Date.now() + totalSecs * 1000;
     set({
@@ -442,7 +504,7 @@ export const useQuestStore = create<QuestState>()(
     const q = s.quests.find((x) => x.id === s.activeId);
     if (!q) return;
     const ratio = s.focusTotal ? 1 - s.focusLeft / s.focusTotal : 0;
-    const gain = Math.max(0, Math.round(xpFor(q.mins) * ratio));
+    const gain = Math.max(0, Math.round(questXp(q) * ratio));
     set({
       screen: 'reward',
       awaitingPhotoId: null,
@@ -563,6 +625,8 @@ export const useQuestStore = create<QuestState>()(
         bedtimeStartMin: s.bedtimeStartMin,
         bedtimeWakeMin: s.bedtimeWakeMin,
         remindersEnabled: s.remindersEnabled,
+        waterEnabled: s.waterEnabled,
+        waterGlasses: s.waterGlasses,
         lastDayKey: s.lastDayKey,
         activeId: s.activeId,
         focusEndAt: s.focusEndAt,
@@ -616,7 +680,7 @@ type Setter = (partial: Partial<QuestState> | ((s: QuestState) => Partial<QuestS
 
 function grantReward(set: Setter, get: () => QuestState, quest: Quest) {
   const s = get();
-  const gain = xpFor(quest.mins);
+  const gain = questXp(quest);
   set({
     screen: 'reward',
     quests: s.quests.map((x) => (x.id === quest.id ? { ...x, done: true } : x)),

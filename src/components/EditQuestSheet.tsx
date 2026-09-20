@@ -15,9 +15,9 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from './PressableScale';
-import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
+import { colors, durationLabel, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
-import { DURATION_CHOICES } from '../state/data';
+import DurationPicker from './DurationPicker';
 import { formatSlot, slotChoices } from '../state/schedule';
 import { Quest } from '../state/types';
 import { useSheetDismiss } from './useSheetDismiss';
@@ -111,20 +111,7 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
             />
 
             <Text style={styles.label}>HOW LONG</Text>
-            <View style={styles.durationRow}>
-              {DURATION_CHOICES.map((m) => {
-                const on = mins === m;
-                return (
-                  <Pressable
-                    key={m}
-                    style={[styles.durationBtn, on && styles.durationBtnOn]}
-                    onPress={() => setMins(m)}
-                  >
-                    <Text style={styles.durationText}>{m}m</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <DurationPicker mins={mins} onChange={setMins} />
 
             <Text style={styles.label}>WHEN</Text>
             <ScrollView
@@ -175,7 +162,7 @@ export default function EditQuestSheet({ quest }: { quest: Quest }) {
             </Pressable>
 
             <Text style={styles.summary}>
-              {formatSlot(startMin)} · {mins} MIN PAYS +{xpFor(mins)} XP
+              {formatSlot(startMin)} · {durationLabel(mins).toUpperCase()} PAYS +{xpFor(mins)} XP
             </Text>
 
             <PressableScale style={styles.saveBtn} onPress={save}>

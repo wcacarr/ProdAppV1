@@ -1,4 +1,4 @@
-import { Quest } from './types';
+import { Quest, isWaterQuest } from './types';
 
 /** The stretch of the day quests can be scheduled in, in minutes from midnight. */
 export type DayWindow = { startMin: number; endMin: number };
@@ -78,23 +78,32 @@ export function sortedByStart(quests: Quest[]): Quest[] {
 /** First slot after everything already booked, so a new quest lands at the end
  *  of the day rather than on top of something. */
 export function nextFreeSlot(quests: Quest[], mins: number, w: DayWindow): number {
-  const latestEnd = quests.reduce((acc, q) => Math.max(acc, endOf(q)), w.startMin);
+  // Glasses of water sit on top of whatever else is happening; they are not
+  // time you have booked, so they should not push a new quest down the day.
+  const latestEnd = quests
+    .filter((q) => !isWaterQuest(q))
+    .reduce((acc, q) => Math.max(acc, endOf(q)), w.startMin);
   const candidate = ceilToWindow(latestEnd, w);
   // Keep it inside the window even when the day is already full.
   return Math.min(candidate, Math.max(w.startMin, w.endMin - mins));
 }
 
-/** True when this quest overlaps another, so the row can say so. */
+/** True when this quest overlaps another, so the row can say so. Water is
+ *  exempt at both ends — a glass mid-block is the point, not a clash. */
 export function overlaps(quest: Quest, quests: Quest[]) {
+  if (isWaterQuest(quest)) return false;
   return quests.some(
     (other) =>
-      other.id !== quest.id && quest.startMin < endOf(other) && other.startMin < endOf(quest)
+      other.id !== quest.id &&
+      !isWaterQuest(other) &&
+      quest.startMin < endOf(other) &&
+      other.startMin < endOf(quest)
   );
 }
 
 /** Total booked time, for the day-length readout. */
 export function bookedMinutes(quests: Quest[]) {
-  return quests.reduce((acc, q) => acc + q.mins, 0);
+  return quests.reduce((acc, q) => acc + (isWaterQuest(q) ? 0 : q.mins), 0);
 }
 
 /**

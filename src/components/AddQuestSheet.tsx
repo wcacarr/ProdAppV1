@@ -14,9 +14,10 @@ import { BlurView } from 'expo-blur';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, inkAlpha, radii, xpFor } from '../theme';
+import { colors, durationLabel, fonts, inkAlpha, radii, xpFor } from '../theme';
 import { useQuestStore } from '../state/store';
-import { DURATION_CHOICES, PRESETS } from '../state/data';
+import { PRESETS } from '../state/data';
+import DurationPicker from './DurationPicker';
 import { useSheetDismiss } from './useSheetDismiss';
 import { SLOT_MIN, formatSlot, slotChoices } from '../state/schedule';
 
@@ -107,23 +108,8 @@ export default function AddQuestSheet() {
               placeholderTextColor={inkAlpha(0.4)}
               style={styles.input}
             />
-            <View style={styles.durationRow}>
-              {DURATION_CHOICES.map((m) => {
-                const on = draftMins === m;
-                return (
-                  <Pressable
-                    key={m}
-                    style={[
-                      styles.durationBtn,
-                      { backgroundColor: on ? colors.ochre : 'rgba(255,252,242,.8)', borderColor: on ? 'rgba(34,32,27,0.3)' : inkAlpha(0.16) },
-                    ]}
-                    onPress={() => setDraftMins(m)}
-                  >
-                    <Text style={styles.durationText}>{m}m</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <DurationPicker mins={draftMins} onChange={setDraftMins} />
+
             <Text style={[styles.ownLabel, { marginTop: 13 }]}>WHEN</Text>
             <ScrollView
               ref={timeScrollRef}
@@ -173,7 +159,7 @@ export default function AddQuestSheet() {
             </Pressable>
 
             <Text style={styles.xpHint}>
-              {formatSlot(draftStartMin)} · {draftMins} MIN PAYS +{xpFor(draftMins)} XP
+              {formatSlot(draftStartMin)} · {durationLabel(draftMins).toUpperCase()} PAYS +{xpFor(draftMins)} XP
             </Text>
             <Pressable style={styles.addBtn} onPress={addCustom}>
               <Text style={styles.addBtnText}>Add to today</Text>

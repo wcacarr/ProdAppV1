@@ -159,6 +159,62 @@ export async function rescheduleReminders(state: ReminderState) {
 export async function cancelReminders() {
   await drop(DAILY_ID);
   await drop(AWAY_ID);
+  await cancelWaterReminders();
+}
+
+const WATER_PREFIX = 'tasuku-water-';
+/** More glasses than anyone should schedule; used to clear stale ids. */
+const MAX_WATER_SLOTS = 16;
+
+async function cancelWaterReminders() {
+  for (let i = 0; i < MAX_WATER_SLOTS; i++) {
+    await drop(`${WATER_PREFIX}${i}`);
+  }
+}
+
+/**
+ * One nudge per glass, at the times the schedule puts them. Glasses already
+ * ticked off today are skipped, so finishing early buys silence rather than a
+ * reminder for something done.
+ */
+export async function scheduleWaterReminders(
+  times: number[],
+  quests: { kind?: string; startMin: number; done: boolean }[]
+) {
+  await cancelWaterReminders();
+  if (!times.length || !isNotificationsSupported) return;
+
+  const doneAt = new Set(
+    quests.filter((q) => q.kind === 'water' && q.done).map((q) => q.startMin)
+  );
+
+  for (let i = 0; i < times.length; i++) {
+    const minute = times[i];
+    if (doneAt.has(minute)) continue;
+    const at = new Date();
+    at.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
+    await put(
+      `${WATER_PREFIX}${i}`,
+      'Water',
+      `Glass ${i + 1} of ${times.length}. Go and get one.`,
+      at
+    );
+  }
+}
+
+/**
+ * Clears the badge and anything still sitting in the shade. Android keeps the
+ * count on the launcher icon until something actively dismisses it, so opening
+ * the app is the natural moment.
+ */
+export async function clearDeliveredNotifications() {
+  if (!isNotificationsSupported) return;
+  try {
+    await Notifications.dismissAllNotificationsAsync();
+    await Notifications.setBadgeCountAsync(0);
+  } catch {
+    // Nothing to clear, or the launcher does not support badges.
+  }
 }
 
 /**

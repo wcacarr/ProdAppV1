@@ -41,6 +41,14 @@ object BlockStore {
       .apply()
   }
 
+  /** Ends the grace period now, so the lock bites immediately. */
+  fun commitLock(context: Context, packageName: String) {
+    if (!getBlocked(context).contains(packageName)) return
+    prefs(context).edit()
+      .putLong(KEY_COMMIT_PREFIX + packageName, System.currentTimeMillis())
+      .apply()
+  }
+
   /** When the lock stops being reversible without a challenge. */
   fun getLockActiveAt(context: Context, packageName: String): Long =
     prefs(context).getLong(KEY_COMMIT_PREFIX + packageName, 0L)

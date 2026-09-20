@@ -35,6 +35,7 @@ type BlockerNative = {
   launchApp: (packageName: string) => boolean;
   getLockStates: () => LockState[];
   lockApp: (packageName: string) => void;
+  commitLock: (packageName: string) => void;
   unlockApp: (packageName: string) => void;
   grantUnlock: (packageName: string, minutes: number) => void;
   isBlockedNow: (packageName: string) => boolean;
@@ -72,6 +73,8 @@ export const getInstalledApps = async (): Promise<InstalledApp[]> =>
 export const launchApp = (packageName: string) => blocker?.launchApp(packageName) ?? false;
 export const getLockStates = (): LockState[] => blocker?.getLockStates() ?? [];
 export const lockApp = (packageName: string) => blocker?.lockApp(packageName);
+/** Ends the one-minute grace early, locking the app there and then. */
+export const commitLock = (packageName: string) => blocker?.commitLock(packageName);
 export const unlockApp = (packageName: string) => blocker?.unlockApp(packageName);
 export const grantUnlock = (packageName: string, minutes: number) =>
   blocker?.grantUnlock(packageName, minutes);

@@ -25,7 +25,8 @@ export const PRESETS: Preset[] = [
   { name: 'Inbox zero', mins: 15, glyph: 'I', needsPhoto: false },
 ];
 
-export const DURATION_CHOICES = [10, 25, 40, 60];
+/** Quick picks. Anything else is typed in. */
+export const DURATION_CHOICES = [5, 10, 20, 40, 60];
 
 /**
  * Screen time you can buy for a locked app, cheapest first. `label` is the

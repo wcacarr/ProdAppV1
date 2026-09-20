@@ -2,13 +2,13 @@ import { createAudioPlayer } from 'expo-audio';
 import { safePlay } from './safePlay';
 import { configureAudioMode } from './audioMode';
 
-// Reward chime: a 3-note triangle-wave ding synthesized offline into
-// assets/sounds/ding.wav (see the original Web Audio version in
-// project/Questlock v2.dc.html's Component.ding()).
+// Finishing a quest rings the same zen bell as the splash — warmer than the
+// synthesized three-note chime that was here before, and it ties the two
+// moments together.
 export function playDing() {
   try {
     configureAudioMode();
-    const player = createAudioPlayer(require('../../assets/sounds/ding.wav'));
+    const player = createAudioPlayer(require('../../assets/sounds/bell.wav'));
     safePlay(player);
     setTimeout(() => {
       try {
@@ -16,7 +16,7 @@ export function playDing() {
       } catch {
         // already released
       }
-    }, 1200);
+    }, 2600);
   } catch {
     // no audio available on this device/platform — non-fatal
   }

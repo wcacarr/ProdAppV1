@@ -69,6 +69,10 @@ class QuestlockBlockerModule : Module() {
       BlockStore.lock(context, packageName)
     }
 
+    Function("commitLock") { packageName: String ->
+      BlockStore.commitLock(context, packageName)
+    }
+
     Function("unlockApp") { packageName: String ->
       BlockStore.unlock(context, packageName)
     }

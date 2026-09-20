@@ -18,6 +18,7 @@ import {
   isAccessibilityServiceEnabled,
   isBlockingSupported,
   isNotificationAccessGranted,
+  commitLock,
   lockApp,
   openAccessibilitySettings,
   openAppInfo,
@@ -151,7 +152,16 @@ export default function LockSetupScreen() {
             <Text style={styles.body}>Nothing matches "{query.trim()}".</Text>
           )}
           {shown.map((entry) => (
-            <AppRow key={entry.packageName} entry={entry} onToggle={() => toggle(entry)} />
+            <AppRow
+              key={entry.packageName}
+              entry={entry}
+              onToggle={() => toggle(entry)}
+              onLockNow={() => {
+                commitLock(entry.packageName);
+                refreshLocks();
+                flash(`${entry.label} is locked.`);
+              }}
+            />
           ))}
         </ScrollView>
       </GlassPane>
@@ -223,7 +233,16 @@ function PermissionRow({
   );
 }
 
-function AppRow({ entry, onToggle }: { entry: AppEntry; onToggle: () => void }) {
+function AppRow({
+  entry,
+  onToggle,
+  onLockNow,
+}: {
+  entry: AppEntry;
+  onToggle: () => void;
+  /** Skip the rest of the grace countdown. */
+  onLockNow: () => void;
+}) {
   const graceLeft = entry.inGrace ? Math.max(0, Math.ceil((entry.lockActiveAt - Date.now()) / 1000)) : 0;
 
   const status = !entry.locked
@@ -247,6 +266,11 @@ function AppRow({ entry, onToggle }: { entry: AppEntry; onToggle: () => void }) 
           {status}
         </Text>
       </View>
+      {entry.inGrace && (
+        <Pressable style={styles.lockNow} onPress={onLockNow} hitSlop={6}>
+          <Text style={styles.lockNowText}>Lock now</Text>
+        </Pressable>
+      )}
       <View style={[styles.checkbox, entry.locked && styles.checkboxOn]}>
         {entry.locked && <Text style={styles.checkmark}>{'✓'}</Text>}
       </View>
@@ -341,6 +365,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: inkAlpha(0.13),
   },
+  lockNow: {
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    backgroundColor: colors.ochre,
+    borderWidth: 1,
+    borderColor: inkAlpha(0.25),
+  },
+  lockNowText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.ink },
   appIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(246,239,216,.8)' },
   appLabel: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink },
   appPkg: { fontFamily: fonts.mono, fontSize: 9.5, color: inkAlpha(0.52), marginTop: 3 },

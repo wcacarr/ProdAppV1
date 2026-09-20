@@ -11,12 +11,20 @@ export type Quest = {
   photoUri?: string;
   /** Start of its calendar slot, in minutes from midnight (420 = 7:00 AM). */
   startMin: number;
+  /** Generated quests the app manages itself, rather than ones you wrote. */
+  kind?: 'water';
   /**
    * Part of the daily routine. Repeating quests come back unticked tomorrow;
    * one-offs are cleared off the calendar when the day rolls over.
    */
   repeat: boolean;
 };
+
+/** Lives beside the type rather than in hydration.ts, so the schedule maths can
+ *  skip the generated glasses without importing the module that makes them. */
+export function isWaterQuest(quest: Quest) {
+  return quest.kind === 'water';
+}
 
 export type Offer = {
   packageName: string;

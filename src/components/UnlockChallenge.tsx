@@ -20,6 +20,10 @@ const WORDS = [
 
 const CHALLENGE_SECONDS = 120;
 
+/** Characters that can appear at once and still be someone typing. Swipe input
+ *  and autocorrect can land a short word, so this is not set to one. */
+const PASTE_JUMP = 6;
+
 function makeSentence() {
   return Array.from({ length: 14 }, () => WORDS[Math.floor(Math.random() * WORDS.length)]).join(' ');
 }
@@ -37,6 +41,7 @@ export default function UnlockChallenge({
 }) {
   const sentence = useMemo(makeSentence, []);
   const [typed, setTyped] = useState('');
+  const [pasted, setPasted] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(CHALLENGE_SECONDS);
   const failedRef = useRef(false);
 
@@ -59,6 +64,21 @@ export default function UnlockChallenge({
 
   const normalise = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
   const matches = normalise(typed) === normalise(sentence);
+
+  /**
+   * Typing adds a character at a time. A jump of several at once is a paste —
+   * which Google Lens plus the keyboard's clipboard strip made trivial, and
+   * which defeats the entire point of the exercise. Hiding the long-press menu
+   * does not stop that strip, so the input rejects the jump itself.
+   */
+  const onType = (next: string) => {
+    if (next.length - typed.length > PASTE_JUMP) {
+      setPasted(true);
+      return;
+    }
+    if (pasted) setPasted(false);
+    setTyped(next);
+  };
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -85,15 +105,24 @@ export default function UnlockChallenge({
 
             <TextInput
               value={typed}
-              onChangeText={setTyped}
+              onChangeText={onType}
               placeholder="Type it here"
               placeholderTextColor={inkAlpha(0.4)}
               multiline
               autoCorrect={false}
+              autoComplete="off"
               autoCapitalize="none"
+              spellCheck={false}
+              // Hiding the long-press menu is not enough on its own: the
+              // keyboard's own clipboard strip pastes without it.
               contextMenuHidden
               style={styles.input}
             />
+            {pasted && (
+              <Text style={styles.pasteWarning}>
+                Type it out. Pasting is the bit this is here to stop.
+              </Text>
+            )}
 
             <Pressable
               style={[styles.confirmBtn, !matches && styles.confirmBtnOff]}
@@ -149,6 +178,13 @@ const styles = StyleSheet.create({
     borderColor: inkAlpha(0.14),
   },
   sentence: { fontFamily: fonts.mono, fontSize: 13, lineHeight: 21, color: colors.ink },
+  pasteWarning: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: '#963626',
+    marginTop: 8,
+  },
   input: {
     marginTop: 10,
     minHeight: 92,
